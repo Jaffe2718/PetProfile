@@ -90,8 +90,10 @@
     <string name="record_establishment_source_wild">野採</string>
     <string name="record_establishment_source_breed">繁育</string>
     <string name="record_establishment_source_purchase">購入</string>
+    <string name="label_establishment_source">來源</string>
     <string name="record_archive_death">死亡</string>
     <string name="record_archive_transfer">轉出</string>
+    <string name="label_archive_reason">歸檔原因</string>
     <string name="label_transfer_from_person">原飼養者</string>
     <string name="label_transfer_to_person">新飼養者</string>
     <string name="label_transfer_from_place">轉出地點</string>

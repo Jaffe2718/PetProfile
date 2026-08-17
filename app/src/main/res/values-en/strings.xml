@@ -90,8 +90,10 @@
     <string name="record_establishment_source_wild">Wild-caught</string>
     <string name="record_establishment_source_breed">Bred</string>
     <string name="record_establishment_source_purchase">Purchased</string>
+    <string name="label_establishment_source">Source</string>
     <string name="record_archive_death">Death</string>
     <string name="record_archive_transfer">Transferred out</string>
+    <string name="label_archive_reason">Archive Reason</string>
     <string name="label_transfer_from_person">Previous Keeper</string>
     <string name="label_transfer_to_person">New Keeper</string>
     <string name="label_transfer_from_place">From Place</string>

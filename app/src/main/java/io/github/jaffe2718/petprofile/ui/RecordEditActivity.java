@@ -47,6 +47,8 @@ public class RecordEditActivity extends AppCompatActivity {
     public static final String EXTRA_RECORD_ID = "record_id";
     private static final int REQUEST_IMAGES = 5301;
     private static final int REQUEST_MAP_PICK = 5401;
+    private static final int REQUEST_TRANSFER_FROM_MAP = 5402;
+    private static final int REQUEST_TRANSFER_TO_MAP = 5403;
 
     private PetRepository repository;
     private String profileId;
@@ -70,8 +72,10 @@ public class RecordEditActivity extends AppCompatActivity {
     private LinearLayout transferExtraLayout;
     private EditText transferFromPersonEditText;
     private EditText transferToPersonEditText;
-    private EditText transferFromPlaceEditText;
-    private EditText transferToPlaceEditText;
+    private Button transferFromPlaceButton;
+    private Button transferToPlaceButton;
+    private String transferFromPlaceText = "";
+    private String transferToPlaceText = "";
     private EditText notesEditText;
     private LinearLayout imagesContainer;
     private boolean recordLoaded;
@@ -100,6 +104,7 @@ public class RecordEditActivity extends AppCompatActivity {
         setupFieldEditor();
         setupListeners();
         updateTimeButton();
+        updateTransferPlaceButtons();
         Button saveButton = findViewById(R.id.saveButton);
         recordLoaded = recordId == null;
         saveButton.setEnabled(recordLoaded);
@@ -125,8 +130,8 @@ public class RecordEditActivity extends AppCompatActivity {
         transferExtraLayout = findViewById(R.id.transferExtraLayout);
         transferFromPersonEditText = findViewById(R.id.transferFromPersonEditText);
         transferToPersonEditText = findViewById(R.id.transferToPersonEditText);
-        transferFromPlaceEditText = findViewById(R.id.transferFromPlaceEditText);
-        transferToPlaceEditText = findViewById(R.id.transferToPlaceEditText);
+        transferFromPlaceButton = findViewById(R.id.transferFromPlaceButton);
+        transferToPlaceButton = findViewById(R.id.transferToPlaceButton);
         notesEditText = findViewById(R.id.notesEditText);
         imagesContainer = findViewById(R.id.imagesContainer);
         titleEditText = findViewById(R.id.titleEditText);
@@ -180,6 +185,8 @@ public class RecordEditActivity extends AppCompatActivity {
         });
         timeButton.setOnClickListener(v -> pickTime());
         findViewById(R.id.locationButton).setOnClickListener(v -> pickLocation());
+        transferFromPlaceButton.setOnClickListener(v -> pickTransferFromPlace());
+        transferToPlaceButton.setOnClickListener(v -> pickTransferToPlace());
         findViewById(R.id.addFieldButton).setOnClickListener(v ->
                 fieldAdapter.addField(new EditableField("", FieldType.NUMBER)));
         findViewById(R.id.addImageButton).setOnClickListener(v -> pickImages());
@@ -206,8 +213,9 @@ public class RecordEditActivity extends AppCompatActivity {
                 notesEditText.setText(existingRecord.notesMarkdown);
                 transferFromPersonEditText.setText(existingRecord.transferFromPerson);
                 transferToPersonEditText.setText(existingRecord.transferToPerson);
-                transferFromPlaceEditText.setText(existingRecord.transferFromPlace);
-                transferToPlaceEditText.setText(existingRecord.transferToPlace);
+                transferFromPlaceText = existingRecord.transferFromPlace == null ? "" : existingRecord.transferFromPlace;
+                transferToPlaceText = existingRecord.transferToPlace == null ? "" : existingRecord.transferToPlace;
+                updateTransferPlaceButtons();
                 if (existingRecord.establishmentSource != null) {
                     selectEstablishmentSource(existingRecord.establishmentSource);
                 }
@@ -381,6 +389,28 @@ public class RecordEditActivity extends AppCompatActivity {
         LocationHelper.openMapPicker(this, REQUEST_MAP_PICK, initialLatitude, initialLongitude);
     }
 
+    private void pickTransferFromPlace() {
+        openTransferPlacePicker(REQUEST_TRANSFER_FROM_MAP);
+    }
+
+    private void pickTransferToPlace() {
+        openTransferPlacePicker(REQUEST_TRANSFER_TO_MAP);
+    }
+
+    private void openTransferPlacePicker(int requestCode) {
+        double[] coords = LocationHelper.lastKnownCoordinates(this);
+        double initialLatitude = coords == null ? 35.0 : coords[0];
+        double initialLongitude = coords == null ? 105.0 : coords[1];
+        LocationHelper.openMapPicker(this, requestCode, initialLatitude, initialLongitude);
+    }
+
+    private void updateTransferPlaceButtons() {
+        transferFromPlaceButton.setText(getString(R.string.label_transfer_from_place)
+                + ": " + transferFromPlaceText);
+        transferToPlaceButton.setText(getString(R.string.label_transfer_to_place)
+                + ": " + transferToPlaceText);
+    }
+
     private void pickImages() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -439,8 +469,8 @@ public class RecordEditActivity extends AppCompatActivity {
         record.archiveReason = RecordType.ARCHIVE.equals(currentType) ? archiveReason() : null;
         record.transferFromPerson = text(transferFromPersonEditText);
         record.transferToPerson = text(transferToPersonEditText);
-        record.transferFromPlace = text(transferFromPlaceEditText);
-        record.transferToPlace = text(transferToPlaceEditText);
+        record.transferFromPlace = transferFromPlaceText;
+        record.transferToPlace = transferToPlaceText;
 
         List<RecordImageEntity> images = new ArrayList<>();
         for (int i = 0; i < imageUris.size(); i++) {
@@ -556,6 +586,38 @@ public class RecordEditActivity extends AppCompatActivity {
                     locationName = LocationHelper.formatDms(pickedLatitude, true)
                             + ", " + LocationHelper.formatDms(pickedLongitude, false);
                     locationButton.setText(locationName);
+                }
+            });
+        } else if ((requestCode == REQUEST_TRANSFER_FROM_MAP
+                || requestCode == REQUEST_TRANSFER_TO_MAP)
+                && resultCode == RESULT_OK && data != null) {
+            final double pickedLatitude = data.getDoubleExtra(MapPickerActivity.EXTRA_RESULT_LATITUDE, 0.0);
+            final double pickedLongitude = data.getDoubleExtra(MapPickerActivity.EXTRA_RESULT_LONGITUDE, 0.0);
+            final boolean fromPlace = requestCode == REQUEST_TRANSFER_FROM_MAP;
+            LocationHelper.resolveAddress(this, pickedLatitude, pickedLongitude, new LocationHelper.Callback() {
+                @Override
+                public void onResult(LocationHelper.LocationResult result) {
+                    String formatted = result.name + " "
+                            + LocationHelper.formatDms(pickedLatitude, true)
+                            + ", " + LocationHelper.formatDms(pickedLongitude, false);
+                    if (fromPlace) {
+                        transferFromPlaceText = formatted;
+                    } else {
+                        transferToPlaceText = formatted;
+                    }
+                    updateTransferPlaceButtons();
+                }
+
+                @Override
+                public void onError(String message) {
+                    String formatted = LocationHelper.formatDms(pickedLatitude, true)
+                            + ", " + LocationHelper.formatDms(pickedLongitude, false);
+                    if (fromPlace) {
+                        transferFromPlaceText = formatted;
+                    } else {
+                        transferToPlaceText = formatted;
+                    }
+                    updateTransferPlaceButtons();
                 }
             });
         }

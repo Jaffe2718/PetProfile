@@ -201,9 +201,10 @@ public final class CardShareManager {
     private static int recordBoxHeight(Context context, Markwon markwon, RecordEntity record,
                                        List<RecordFieldEntity> fields, List<String> images) {
         int fieldsHeight = fields == null ? 0 : fields.size() * 44;
+        int metadataHeight = metadataLines(context, record).size() * 44;
         int notesHeight = markdownHeight(context, markwon, record.notesMarkdown, WIDTH - 128);
         int imagesHeight = images == null || images.isEmpty() ? 0 : 244;
-        return 320 + fieldsHeight + notesHeight + imagesHeight;
+        return 320 + fieldsHeight + metadataHeight + notesHeight + imagesHeight;
     }
 
     private static void drawRecordBoxContent(Canvas canvas, Context context, Markwon markwon,
@@ -245,6 +246,15 @@ public final class CardShareManager {
             location = context.getString(R.string.label_none);
         }
         canvas.drawText(context.getString(R.string.label_location) + ": " + location, x, y, metaPaint);
+
+        List<String> metadata = metadataLines(context, record);
+        if (!metadata.isEmpty()) {
+            y += 52f;
+            for (String line : metadata) {
+                canvas.drawText(line, x, y, metaPaint);
+                y += 44f;
+            }
+        }
 
         if (fields != null && !fields.isEmpty()) {
             y += 52f;
@@ -337,6 +347,47 @@ public final class CardShareManager {
                     .append(LocationHelper.formatDms(record.longitude, false));
         }
         return builder.toString();
+    }
+
+    private static List<String> metadataLines(Context context, RecordEntity record) {
+        List<String> lines = new ArrayList<>();
+        if (RecordType.ESTABLISHMENT.equals(record.type)) {
+            lines.add(context.getString(R.string.label_establishment_source)
+                    + ": " + establishmentSourceLabel(context, record.establishmentSource));
+        } else if (RecordType.ARCHIVE.equals(record.type)) {
+            lines.add(context.getString(R.string.label_archive_reason)
+                    + ": " + archiveReasonLabel(context, record.archiveReason));
+        } else if (RecordType.TRANSFER.equals(record.type)) {
+            lines.add(context.getString(R.string.label_transfer_from_person)
+                    + ": " + safeText(record.transferFromPerson));
+            lines.add(context.getString(R.string.label_transfer_to_person)
+                    + ": " + safeText(record.transferToPerson));
+            lines.add(context.getString(R.string.label_transfer_from_place)
+                    + ": " + safeText(record.transferFromPlace));
+            lines.add(context.getString(R.string.label_transfer_to_place)
+                    + ": " + safeText(record.transferToPlace));
+        }
+        return lines;
+    }
+
+    private static String establishmentSourceLabel(Context context, String source) {
+        if ("WILD".equals(source)) {
+            return context.getString(R.string.record_establishment_source_wild);
+        }
+        if ("PURCHASE".equals(source)) {
+            return context.getString(R.string.record_establishment_source_purchase);
+        }
+        return context.getString(R.string.record_establishment_source_breed);
+    }
+
+    private static String archiveReasonLabel(Context context, String reason) {
+        return "TRANSFER".equals(reason)
+                ? context.getString(R.string.record_archive_transfer)
+                : context.getString(R.string.record_archive_death);
+    }
+
+    private static String safeText(String value) {
+        return value == null || value.trim().isEmpty() ? "" : value.trim();
     }
 
     private static int typeColor(String type) {

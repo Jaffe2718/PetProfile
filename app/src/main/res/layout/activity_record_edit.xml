@@ -191,29 +191,21 @@
                         android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.PetProfile.TextInputLayout"
-                    android:layout_width="match_parent"
+                <Button
+                    android:id="@+id/transferFromPlaceButton"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:hint="@string/label_transfer_from_place">
+                    android:backgroundTint="@color/avatar_background"
+                    android:textColor="@android:color/black"
+                    android:text="@string/label_transfer_from_place" />
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/transferFromPlaceEditText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.PetProfile.TextInputLayout"
-                    android:layout_width="match_parent"
+                <Button
+                    android:id="@+id/transferToPlaceButton"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:hint="@string/label_transfer_to_place">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/transferToPlaceEditText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
-                </com.google.android.material.textfield.TextInputLayout>
+                    android:backgroundTint="@color/avatar_background"
+                    android:textColor="@android:color/black"
+                    android:text="@string/label_transfer_to_place" />
             </LinearLayout>
 
             <TextView
