@@ -40,14 +40,14 @@ public class LineChartView extends View {
     }
 
     private void init() {
-        axisPaint.setColor(Color.rgb(100, 100, 100));
+        axisPaint.setColor(Color.rgb(122, 136, 129));
         axisPaint.setStrokeWidth(3f);
         axisPaint.setTextSize(34f);
-        linePaint.setColor(Color.rgb(46, 125, 50));
+        linePaint.setColor(Color.rgb(79, 138, 107));
         linePaint.setStrokeWidth(5f);
         linePaint.setStyle(Paint.Style.STROKE);
-        pointPaint.setColor(Color.rgb(255, 143, 0));
-        labelPaint.setColor(Color.rgb(60, 60, 60));
+        pointPaint.setColor(Color.rgb(48, 91, 68));
+        labelPaint.setColor(Color.rgb(102, 112, 107));
         labelPaint.setTextSize(30f);
     }
 

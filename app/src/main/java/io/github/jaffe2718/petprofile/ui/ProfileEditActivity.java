@@ -86,7 +86,7 @@ public class ProfileEditActivity extends AppCompatActivity {
     private EditText speciesEditText;
     private EditText subspeciesEditText;
     private EditText nicknameEditText;
-    private Spinner genderSpinner;
+    private RadioGroup genderRadioGroup;
     private android.widget.LinearLayout taxonomyContainer;
     private boolean taxonomyExpanded;
     private TextView profileIdTextView;
@@ -140,7 +140,7 @@ public class ProfileEditActivity extends AppCompatActivity {
         speciesEditText = findViewById(R.id.speciesEditText);
         subspeciesEditText = findViewById(R.id.subspeciesEditText);
         nicknameEditText = findViewById(R.id.nicknameEditText);
-        genderSpinner = findViewById(R.id.genderSpinner);
+        genderRadioGroup = findViewById(R.id.genderRadioGroup);
         taxonomyContainer = findViewById(R.id.taxonomyContainer);
         profileIdTextView = findViewById(R.id.profileIdTextView);
         avatarPreview = findViewById(R.id.avatarPreview);
@@ -154,19 +154,7 @@ public class ProfileEditActivity extends AppCompatActivity {
     }
 
     private void setupSpinners() {
-        ArrayAdapter<String> genderAdapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                new String[]{
-                        getString(R.string.gender_unknown),
-                        getString(R.string.gender_female),
-                        getString(R.string.gender_male)
-                }
-        );
-        genderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        genderSpinner.setAdapter(genderAdapter);
-        genderSpinner.setSelection(0);
-
+        genderRadioGroup.check(R.id.genderUnknownRadio);
     }
 
     private void setupFieldEditor() {
@@ -670,20 +658,20 @@ public class ProfileEditActivity extends AppCompatActivity {
 
     private void setGenderSelection(String gender) {
         if ("FEMALE".equals(gender)) {
-            genderSpinner.setSelection(1);
+            genderRadioGroup.check(R.id.genderFemaleRadio);
         } else if ("MALE".equals(gender)) {
-            genderSpinner.setSelection(2);
+            genderRadioGroup.check(R.id.genderMaleRadio);
         } else {
-            genderSpinner.setSelection(0);
+            genderRadioGroup.check(R.id.genderUnknownRadio);
         }
     }
 
     private String selectedGenderValue() {
-        int position = genderSpinner.getSelectedItemPosition();
-        if (position == 1) {
+        int checkedId = genderRadioGroup.getCheckedRadioButtonId();
+        if (checkedId == R.id.genderFemaleRadio) {
             return "FEMALE";
         }
-        if (position == 2) {
+        if (checkedId == R.id.genderMaleRadio) {
             return "MALE";
         }
         return "UNKNOWN";

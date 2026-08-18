@@ -19,6 +19,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
+import io.github.jaffe2718.petprofile.data.KeeperInfo;
 import io.github.jaffe2718.petprofile.data.LanTransferPayload;
 import io.github.jaffe2718.petprofile.data.ProfileDetails;
 import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
@@ -272,6 +273,21 @@ public class RecordListActivity extends AppCompatActivity {
             public void onError(Throwable error) {
                 stopActiveTransfer();
                 Toast.makeText(RecordListActivity.this, R.string.transfer_lan_failed, Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void onTransferCompleted(KeeperInfo receiverInfo) {
+                repository.applyOutgoingTransfer(profileId, receiverInfo, new Async.EmptyResult() {
+                    @Override
+                    public void onSuccess() {
+                        reload();
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        Toast.makeText(RecordListActivity.this, error.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                });
             }
         });
     }

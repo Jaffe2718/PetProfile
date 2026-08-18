@@ -8,7 +8,10 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,12 +28,15 @@ import com.google.android.material.appbar.MaterialToolbar;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
 import io.github.jaffe2718.petprofile.data.FamilyGraph;
+import io.github.jaffe2718.petprofile.data.KeeperInfo;
 import io.github.jaffe2718.petprofile.data.ProfileDetails;
 import io.github.jaffe2718.petprofile.data.entity.ProfileCustomFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.ProfileEntity;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.BackupManager;
+import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
+import io.github.jaffe2718.petprofile.util.LocationHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +45,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_EXPORT = 5101;
     private static final int REQUEST_IMPORT = 5102;
+    private static final int REQUEST_KEEPER_MAP = 5103;
     private PetRepository repository;
     private List<ProfileDetails> allDetails = new ArrayList<>();
     private List<ProfileDetails> filteredDetails = new ArrayList<>();
@@ -47,8 +54,12 @@ public class MainActivity extends AppCompatActivity {
     private TextView emptyTextView;
     private PedigreeView pedigreeView;
     private MaterialButton modeButton;
-    private MaterialButton filterButton;
+    private ImageButton filterButton;
+    private ImageButton sortButton;
     private EditText searchEditText;
+    private boolean sortAscending;
+    private View keeperInfoDialogView;
+    private KeeperInfo draftKeeperInfo = new KeeperInfo();
 
     private boolean listMode = true;
     private ProfileFilterDialog.FilterState activeFilter = new ProfileFilterDialog.FilterState();
@@ -66,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
         pedigreeView = findViewById(R.id.pedigreeView);
         modeButton = findViewById(R.id.modeButton);
         filterButton = findViewById(R.id.filterButton);
+        sortButton = findViewById(R.id.sortButton);
         searchEditText = findViewById(R.id.searchEditText);
         FloatingActionButton addProfileFab = findViewById(R.id.addProfileFab);
 
@@ -108,11 +120,14 @@ public class MainActivity extends AppCompatActivity {
         });
 
         filterButton.setOnClickListener(v -> showFilterDialog());
+        sortButton.setOnClickListener(v -> toggleSortOrder());
         modeButton.setOnClickListener(v -> toggleMode());
         addProfileFab.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ProfileEditActivity.class);
             startActivity(intent);
         });
+        updateSortButton();
+        updateModeUi();
     }
 
     @Override
@@ -153,6 +168,10 @@ public class MainActivity extends AppCompatActivity {
             if (!activeFilter.matches(details)) continue;
             result.add(details);
         }
+        result.sort((a, b) -> {
+            int comparison = Long.compare(lastRecordTime(a), lastRecordTime(b));
+            return sortAscending ? comparison : -comparison;
+        });
         filteredDetails = result;
         if (listMode) {
             adapter.setItems(filteredDetails);
@@ -162,6 +181,21 @@ public class MainActivity extends AppCompatActivity {
         } else {
             pedigreeView.setProfiles(filteredDetails);
         }
+    }
+
+    private void toggleSortOrder() {
+        sortAscending = !sortAscending;
+        updateSortButton();
+        applyFilter();
+    }
+
+    private void updateSortButton() {
+        sortButton.setImageResource(sortAscending
+                ? R.drawable.ic_sort_ascending
+                : R.drawable.ic_sort_descending);
+        sortButton.setContentDescription(getString(sortAscending
+                ? R.string.sort_ascending
+                : R.string.sort_descending));
     }
 
     private long lastRecordTime(ProfileDetails details) {
@@ -219,6 +253,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void toggleMode() {
         listMode = !listMode;
+        updateModeUi();
+    }
+
+    private void updateModeUi() {
+        sortButton.setVisibility(listMode ? View.VISIBLE : View.GONE);
         if (listMode) {
             modeButton.setText(R.string.mode_list);
             recyclerView.setVisibility(android.view.View.VISIBLE);
@@ -263,6 +302,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
+        if (id == R.id.action_keeper_info) {
+            showKeeperInfoDialog();
+            return true;
+        }
         if (id == R.id.action_export) {
             exportZip();
             return true;
@@ -287,6 +330,44 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showKeeperInfoDialog() {
+        keeperInfoDialogView = getLayoutInflater().inflate(R.layout.dialog_keeper_info, null);
+        EditText nicknameEditText = keeperInfoDialogView.findViewById(R.id.keeperNicknameEditText);
+        Button homeButton = keeperInfoDialogView.findViewById(R.id.keeperHomeButton);
+        draftKeeperInfo = KeeperInfoManager.load(this);
+        nicknameEditText.setText(draftKeeperInfo.nickname);
+        updateKeeperHomeButton(homeButton);
+        homeButton.setOnClickListener(v -> pickKeeperHome());
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.action_keeper_info)
+                .setView(keeperInfoDialogView)
+                .setPositiveButton(R.string.action_save, (dialog, which) -> {
+                    draftKeeperInfo.nickname = nicknameEditText.getText().toString().trim();
+                    KeeperInfoManager.save(this, draftKeeperInfo);
+                    keeperInfoDialogView = null;
+                })
+                .setNegativeButton(R.string.action_cancel, (dialog, which) -> keeperInfoDialogView = null)
+                .setOnDismissListener(dialog -> keeperInfoDialogView = null)
+                .show();
+    }
+
+    private void pickKeeperHome() {
+        double[] coords = LocationHelper.lastKnownCoordinates(this);
+        double initialLatitude = coords == null ? 35.0 : coords[0];
+        double initialLongitude = coords == null ? 105.0 : coords[1];
+        LocationHelper.openMapPicker(this, REQUEST_KEEPER_MAP, initialLatitude, initialLongitude);
+    }
+
+    private void updateKeeperHomeButton(Button homeButton) {
+        if (homeButton == null) return;
+        if (draftKeeperInfo.hasHomePlace()) {
+            homeButton.setText(draftKeeperInfo.homePlace);
+        } else {
+            homeButton.setText(R.string.action_pick_location);
+        }
     }
 
     private void showAbout() {
@@ -350,6 +431,31 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode != RESULT_OK || data == null) return;
+        if (requestCode == REQUEST_KEEPER_MAP) {
+            double pickedLatitude = data.getDoubleExtra(MapPickerActivity.EXTRA_RESULT_LATITUDE, 0.0);
+            double pickedLongitude = data.getDoubleExtra(MapPickerActivity.EXTRA_RESULT_LONGITUDE, 0.0);
+            draftKeeperInfo.latitude = pickedLatitude;
+            draftKeeperInfo.longitude = pickedLongitude;
+            LocationHelper.resolveAddress(this, pickedLatitude, pickedLongitude, new LocationHelper.Callback() {
+                @Override
+                public void onResult(LocationHelper.LocationResult result) {
+                    draftKeeperInfo.homePlace = result.name + " "
+                            + LocationHelper.formatDms(result.latitude, true)
+                            + ", " + LocationHelper.formatDms(result.longitude, false);
+                    updateKeeperHomeButton(keeperInfoDialogView == null ? null
+                            : keeperInfoDialogView.findViewById(R.id.keeperHomeButton));
+                }
+
+                @Override
+                public void onError(String message) {
+                    draftKeeperInfo.homePlace = LocationHelper.formatDms(pickedLatitude, true)
+                            + ", " + LocationHelper.formatDms(pickedLongitude, false);
+                    updateKeeperHomeButton(keeperInfoDialogView == null ? null
+                            : keeperInfoDialogView.findViewById(R.id.keeperHomeButton));
+                }
+            });
+            return;
+        }
         Uri uri = data.getData();
         if (uri == null) return;
         if (requestCode == REQUEST_EXPORT && pendingExportBundle != null) {

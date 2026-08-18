@@ -21,6 +21,10 @@
     <string name="map_provider_google">Google</string>
     <string name="map_provider_osm">OSM</string>
     <string name="action_scan_qr">QR を読み取る</string>
+    <string name="action_keeper_info">飼育者情報</string>
+    <string name="action_sort">並べ替え</string>
+    <string name="sort_ascending">昇順</string>
+    <string name="sort_descending">降順</string>
     <string name="action_about">このアプリについて</string>
     <string name="about_version">バージョン %1$s</string>
     <string name="about_message">Pet Profile はローカル優先の爬虫類飼育記録アプリです。</string>

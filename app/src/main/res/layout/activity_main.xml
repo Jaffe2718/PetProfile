@@ -12,6 +12,8 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface"
+            app:navigationIconTint="@color/text_primary"
             app:title="@string/title_profiles" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -31,29 +33,57 @@
             android:paddingEnd="12dp"
             android:paddingBottom="8dp">
 
-            <EditText
-                android:id="@+id/searchEditText"
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.PetProfile.TextInputLayout"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="@string/label_search_hint"
-                android:importantForAutofill="no"
-                android:inputType="text" />
+                android:hint="@string/label_search_hint">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/filterButton"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/searchEditText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <ImageButton
+                android:id="@+id/sortButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_marginStart="8dp"
-                android:text="@string/action_filter" />
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_sort"
+                android:padding="12dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_sort_descending" />
+
+            <ImageButton
+                android:id="@+id/filterButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_filter"
+                android:padding="12dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_filter_funnel" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/modeButton"
                 style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="112dp"
+                android:layout_height="48dp"
                 android:layout_marginStart="8dp"
+                android:gravity="center"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
                 android:text="@string/mode_list" />
         </LinearLayout>
 
@@ -94,6 +124,8 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
         android:contentDescription="@string/action_add_profile"
-        android:src="@android:drawable/ic_input_add" />
+        android:src="@android:drawable/ic_input_add"
+        app:backgroundTint="@color/primary"
+        app:tint="@android:color/white" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

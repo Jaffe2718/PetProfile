@@ -12,7 +12,9 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface"
             app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
+            app:navigationIconTint="@color/text_primary"
             app:title="@string/action_add_record" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -84,16 +86,16 @@
                 android:id="@+id/timeButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/label_time" />
 
             <Button
                 android:id="@+id/locationButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/action_pick_location" />
 
             <LinearLayout
@@ -195,16 +197,16 @@
                     android:id="@+id/transferFromPlaceButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:backgroundTint="@color/avatar_background"
-                    android:textColor="@android:color/black"
+                    android:backgroundTint="@color/button_soft_bg"
+                    android:textColor="@color/button_soft_text"
                     android:text="@string/label_transfer_from_place" />
 
                 <Button
                     android:id="@+id/transferToPlaceButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:backgroundTint="@color/avatar_background"
-                    android:textColor="@android:color/black"
+                    android:backgroundTint="@color/button_soft_bg"
+                    android:textColor="@color/button_soft_text"
                     android:text="@string/label_transfer_to_place" />
             </LinearLayout>
 
@@ -225,8 +227,8 @@
                 android:id="@+id/addFieldButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/action_add_field" />
 
             <com.google.android.material.textfield.TextInputLayout
@@ -254,8 +256,8 @@
                 android:id="@+id/addImageButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/action_pick_image" />
 
             <Button
@@ -263,8 +265,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/primary"
+                android:textColor="@android:color/white"
                 android:text="@string/action_save" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

@@ -26,6 +26,7 @@ import io.github.jaffe2718.petprofile.data.LanTransferPayload;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.BackupManager;
+import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LanTransferClient;
 import io.github.jaffe2718.petprofile.util.QrCodeUtil;
 
@@ -149,7 +150,7 @@ public class QrScannerActivity extends AppCompatActivity {
         Toast.makeText(this, R.string.transfer_lan_connecting, Toast.LENGTH_LONG).show();
         Async.run(() -> {
             try {
-                byte[] zipBytes = LanTransferClient.download(payload);
+                byte[] zipBytes = LanTransferClient.download(payload, KeeperInfoManager.load(QrScannerActivity.this));
                 ExportBundle bundle = BackupManager.readZipBytes(QrScannerActivity.this, zipBytes);
                 repository.importTransferBundle(bundle, new Async.EmptyResult() {
                     @Override

@@ -12,7 +12,9 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface"
             app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
+            app:navigationIconTint="@color/text_primary"
             app:title="@string/action_add_profile" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -61,26 +63,39 @@
                     android:inputType="text" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <LinearLayout
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/label_gender" />
+
+            <RadioGroup
+                android:id="@+id/genderRadioGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <TextView
+                <RadioButton
+                    android:id="@+id/genderUnknownRadio"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/label_gender" />
+                    android:checked="true"
+                    android:text="@string/gender_unknown" />
 
-                <Spinner
-                    android:id="@+id/genderSpinner"
-                    android:layout_width="0dp"
+                <RadioButton
+                    android:id="@+id/genderFemaleRadio"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1" />
-            </LinearLayout>
+                    android:text="@string/gender_female" />
 
-            <ImageView
+                <RadioButton
+                    android:id="@+id/genderMaleRadio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gender_male" />
+            </RadioGroup>
+
+            <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/avatarPreview"
                 android:layout_width="120dp"
                 android:layout_height="120dp"
@@ -88,16 +103,17 @@
                 android:background="@color/avatar_background"
                 android:clickable="true"
                 android:focusable="true"
-                android:scaleType="centerCrop" />
+                android:scaleType="centerCrop"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.PetProfile.Avatar" />
 
             <Button
                 android:id="@+id/taxonomyToggleButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:backgroundTint="@color/avatar_background"
+                android:backgroundTint="@color/button_soft_bg"
                 android:text="@string/label_taxonomy_section"
-                android:textColor="@android:color/black" />
+                android:textColor="@color/button_soft_text" />
 
             <LinearLayout
                 android:id="@+id/taxonomyContainer"
@@ -266,8 +282,8 @@
                 android:id="@+id/addFieldButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/action_add_field" />
 
             <TextView
@@ -322,16 +338,16 @@
                 android:id="@+id/establishmentTimeButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/label_time" />
 
             <Button
                 android:id="@+id/establishmentLocationButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/action_pick_location" />
 
             <TextView
@@ -352,16 +368,16 @@
                 android:id="@+id/addEstablishmentFieldButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/action_add_field" />
 
             <Button
                 android:id="@+id/establishmentImageButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/button_soft_bg"
+                android:textColor="@color/button_soft_text"
                 android:text="@string/action_pick_image" />
 
             <com.google.android.material.textfield.TextInputLayout
@@ -383,8 +399,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:backgroundTint="@color/avatar_background"
-                android:textColor="@android:color/black"
+                android:backgroundTint="@color/primary"
+                android:textColor="@android:color/white"
                 android:text="@string/action_save" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

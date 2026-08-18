@@ -119,6 +119,8 @@ public class RecordAdapter extends RecyclerView.Adapter<RecordAdapter.Holder> {
                 }
                 image.setLayoutParams(params);
                 image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setBackgroundResource(R.drawable.bg_thumb_rounded);
+                image.setClipToOutline(true);
                 Glide.with(itemView).load(uris.get(i)).into(image);
                 thumbnailsContainer.addView(image);
             }

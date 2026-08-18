@@ -9,6 +9,7 @@ import io.github.jaffe2718.petprofile.PetProfileApplication;
 import io.github.jaffe2718.petprofile.data.AppDatabase;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
 import io.github.jaffe2718.petprofile.data.FamilyGraph;
+import io.github.jaffe2718.petprofile.data.KeeperInfo;
 import io.github.jaffe2718.petprofile.data.NumericPoint;
 import io.github.jaffe2718.petprofile.data.NumericSeries;
 import io.github.jaffe2718.petprofile.data.FieldType;
@@ -25,6 +26,7 @@ import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.IdUtil;
+import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
 
 import java.util.ArrayDeque;
@@ -472,6 +474,7 @@ public class PetRepository {
                 ExportBundle bundle = exportProfiles(ids);
                 bundle.rootProfileId = profile.id;
                 bundle.descendantIds.addAll(descendants);
+                bundle.keeperInfo = KeeperInfoManager.load(context);
                 Async.post(callback, bundle, null);
             } catch (Throwable t) {
                 Async.post(callback, null, t);
@@ -570,6 +573,8 @@ public class PetRepository {
                     throw new IllegalArgumentException("Empty bundle.");
                 }
                 String rootId = bundle.rootProfileId == null ? null : IdUtil.normalizeId(bundle.rootProfileId);
+                KeeperInfo senderInfo = bundle.keeperInfo == null ? new KeeperInfo() : bundle.keeperInfo;
+                KeeperInfo receiverInfo = KeeperInfoManager.load(context);
                 Set<String> existingProfileIds = new HashSet<>();
                 for (ProfileEntity existing : database.profileDao().getAllProfiles()) {
                     existingProfileIds.add(IdUtil.normalizeId(existing.id));
@@ -584,7 +589,7 @@ public class PetRepository {
                         }
                     }
                     if (rootArchive == null) {
-                        appendTransferRecord(bundle, rootId);
+                        appendTransferRecord(bundle, rootId, senderInfo, receiverInfo);
                     } else if ("TRANSFER".equals(rootArchive.archiveReason)) {
                         rootArchive.type = RecordType.TRANSFER;
                         rootArchive.archiveReason = null;
@@ -606,13 +611,65 @@ public class PetRepository {
         });
     }
 
-    private void appendTransferRecord(ExportBundle bundle, String profileId) {
+    public void applyOutgoingTransfer(String profileId, KeeperInfo receiverInfo, Async.EmptyResult callback) {
+        Async.run(() -> {
+            try {
+                String normalizedProfileId = IdUtil.normalizeId(profileId);
+                RecordDao recordDao = database.recordDao();
+                ProfileDao profileDao = database.profileDao();
+                if (profileDao.getById(normalizedProfileId) == null) {
+                    Async.ui(callback::onSuccess);
+                    return;
+                }
+                if (recordDao.getFirstByType(normalizedProfileId, RecordType.ARCHIVE) != null) {
+                    Async.ui(callback::onSuccess);
+                    return;
+                }
+                KeeperInfo senderInfo = KeeperInfoManager.load(context);
+                final KeeperInfo receiver = receiverInfo == null ? new KeeperInfo() : receiverInfo;
+                RecordEntity record = new RecordEntity();
+                record.id = IdUtil.randomId();
+                record.profileId = normalizedProfileId;
+                record.type = RecordType.ARCHIVE;
+                record.archiveReason = "TRANSFER";
+                record.title = context.getString(R.string.record_archive_transfer);
+                Long latest = recordDao.getLatestTimestamp(normalizedProfileId);
+                record.timestamp = latest == null ? System.currentTimeMillis() : Math.max(System.currentTimeMillis(), latest + 1);
+                record.transferFromPerson = senderInfo.nickname;
+                record.transferToPlace = senderInfo.homePlace;
+                record.transferToPerson = receiver.nickname;
+                record.transferFromPlace = receiver.homePlace;
+                database.runInTransaction(() -> {
+                    recordDao.insertRecord(record);
+                    syncArchiveStatus(profileDao, recordDao, normalizedProfileId);
+                });
+                Async.ui(callback::onSuccess);
+            } catch (Throwable t) {
+                Async.ui(() -> callback.onError(t));
+            }
+        });
+    }
+
+    private void appendTransferRecord(
+            ExportBundle bundle,
+            String profileId,
+            KeeperInfo senderInfo,
+            KeeperInfo receiverInfo
+    ) {
         RecordEntity record = new RecordEntity();
         record.id = IdUtil.randomId();
         record.profileId = profileId;
         record.type = RecordType.TRANSFER;
         record.title = context.getString(R.string.record_transfer);
         record.timestamp = System.currentTimeMillis();
+        if (senderInfo != null) {
+            record.transferFromPerson = senderInfo.nickname;
+            record.transferFromPlace = senderInfo.homePlace;
+        }
+        if (receiverInfo != null) {
+            record.transferToPerson = receiverInfo.nickname;
+            record.transferToPlace = receiverInfo.homePlace;
+        }
         bundle.records.add(record);
     }
 

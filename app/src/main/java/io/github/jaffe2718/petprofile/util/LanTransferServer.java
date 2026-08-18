@@ -3,6 +3,7 @@ package io.github.jaffe2718.petprofile.util;
 import android.content.Context;
 
 import io.github.jaffe2718.petprofile.data.ExportBundle;
+import io.github.jaffe2718.petprofile.data.KeeperInfo;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -19,6 +20,8 @@ public class LanTransferServer {
         void onStarted(int port, String token);
 
         void onError(Throwable error);
+
+        void onTransferCompleted(KeeperInfo receiverInfo);
     }
 
     private final Context context;
@@ -28,6 +31,7 @@ public class LanTransferServer {
     private ExecutorService executor;
     private volatile boolean running;
     private volatile Socket activeSocket;
+    private Callback callback;
 
     public LanTransferServer(Context context, ExportBundle bundle) {
         this.context = context.getApplicationContext();
@@ -42,6 +46,7 @@ public class LanTransferServer {
         if (executor != null) {
             return;
         }
+        this.callback = callback;
         running = true;
         executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
@@ -125,10 +130,22 @@ public class LanTransferServer {
                 return;
             }
 
+            int keeperLength = input.readInt();
+            KeeperInfo receiverInfo = new KeeperInfo();
+            if (keeperLength > 0 && keeperLength <= 1024 * 1024) {
+                byte[] keeperBytes = new byte[keeperLength];
+                input.readFully(keeperBytes);
+                receiverInfo = KeeperInfoManager.fromJson(new String(keeperBytes, StandardCharsets.UTF_8));
+            }
+
             byte[] zipBytes = BackupManager.createZipBytes(context, bundle);
             output.writeLong(zipBytes.length);
             output.write(zipBytes);
             output.flush();
+            if (callback != null) {
+                final KeeperInfo completedInfo = receiverInfo;
+                Async.ui(() -> callback.onTransferCompleted(completedInfo));
+            }
         }
     }
 

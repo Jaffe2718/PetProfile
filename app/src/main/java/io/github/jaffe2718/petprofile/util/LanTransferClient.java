@@ -1,6 +1,7 @@
 package io.github.jaffe2718.petprofile.util;
 
 import io.github.jaffe2718.petprofile.data.LanTransferPayload;
+import io.github.jaffe2718.petprofile.data.KeeperInfo;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -16,7 +17,7 @@ public final class LanTransferClient {
     private LanTransferClient() {
     }
 
-    public static byte[] download(LanTransferPayload payload) throws Exception {
+    public static byte[] download(LanTransferPayload payload, KeeperInfo receiverInfo) throws Exception {
         if (payload == null || payload.ip == null || payload.token == null || payload.port <= 0) {
             throw new IllegalArgumentException("Invalid LAN transfer payload.");
         }
@@ -28,6 +29,12 @@ public final class LanTransferClient {
             byte[] tokenBytes = payload.token.getBytes(StandardCharsets.UTF_8);
             output.writeInt(tokenBytes.length);
             output.write(tokenBytes);
+            output.flush();
+
+            byte[] keeperBytes = KeeperInfoManager.toJson(receiverInfo == null ? new KeeperInfo() : receiverInfo)
+                    .getBytes(StandardCharsets.UTF_8);
+            output.writeInt(keeperBytes.length);
+            output.write(keeperBytes);
             output.flush();
 
             DataInputStream input = new DataInputStream(socket.getInputStream());

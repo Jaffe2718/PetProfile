@@ -26,6 +26,7 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.appbar.MaterialToolbar;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.FieldType;
+import io.github.jaffe2718.petprofile.data.KeeperInfo;
 import io.github.jaffe2718.petprofile.data.RecordDetails;
 import io.github.jaffe2718.petprofile.data.RecordType;
 import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
@@ -33,6 +34,7 @@ import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
+import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 
 import java.text.SimpleDateFormat;
@@ -114,6 +116,7 @@ public class RecordEditActivity extends AppCompatActivity {
             updateTypeUi();
             applyRecordTypeAvailability();
             prefillFieldsFromLatestRecord();
+            applyCreationDefaultsForType(currentType);
         } else {
             loadRecord();
         }
@@ -182,6 +185,7 @@ public class RecordEditActivity extends AppCompatActivity {
         typeRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             currentType = typeFromRadio(checkedId);
             updateTypeUi();
+            applyCreationDefaultsForType(currentType);
         });
         timeButton.setOnClickListener(v -> pickTime());
         findViewById(R.id.locationButton).setOnClickListener(v -> pickLocation());
@@ -193,6 +197,7 @@ public class RecordEditActivity extends AppCompatActivity {
         findViewById(R.id.saveButton).setOnClickListener(v -> save());
         archiveReasonRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             updateTypeUi();
+            applyCreationDefaultsForType(currentType);
         });
     }
 
@@ -341,6 +346,33 @@ public class RecordEditActivity extends AppCompatActivity {
         boolean showTransferFields = transfer
                 || (archive && archiveReasonRadioGroup.getCheckedRadioButtonId() == R.id.archiveTransferRadio);
         transferExtraLayout.setVisibility(showTransferFields ? View.VISIBLE : View.GONE);
+    }
+
+    private void applyCreationDefaultsForType(String type) {
+        if (recordId != null) {
+            return;
+        }
+        KeeperInfo keeperInfo = KeeperInfoManager.load(this);
+        if (RecordType.TRANSFER.equals(type)) {
+            if (keeperInfo.hasNickname() && text(transferToPersonEditText).isEmpty()) {
+                transferToPersonEditText.setText(keeperInfo.nickname);
+            }
+            if (keeperInfo.hasHomePlace() && transferFromPlaceText.isEmpty()) {
+                transferFromPlaceText = keeperInfo.homePlace;
+                updateTransferPlaceButtons();
+            }
+            return;
+        }
+        if (RecordType.ARCHIVE.equals(type)
+                && archiveReasonRadioGroup.getCheckedRadioButtonId() == R.id.archiveTransferRadio) {
+            if (keeperInfo.hasNickname() && text(transferFromPersonEditText).isEmpty()) {
+                transferFromPersonEditText.setText(keeperInfo.nickname);
+            }
+            if (keeperInfo.hasHomePlace() && transferToPlaceText.isEmpty()) {
+                transferToPlaceText = keeperInfo.homePlace;
+                updateTransferPlaceButtons();
+            }
+        }
     }
 
     private void pickTime() {

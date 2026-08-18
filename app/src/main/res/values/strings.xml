@@ -21,6 +21,10 @@
     <string name="map_provider_google">Google</string>
     <string name="map_provider_osm">OSM</string>
     <string name="action_scan_qr">扫码导入</string>
+    <string name="action_keeper_info">饲养者信息</string>
+    <string name="action_sort">排序</string>
+    <string name="sort_ascending">升序</string>
+    <string name="sort_descending">降序</string>
     <string name="action_about">关于</string>
     <string name="about_version">版本 %1$s</string>
     <string name="about_message">Pet Profile 是一款本地优先的爬宠饲养记录应用。</string>

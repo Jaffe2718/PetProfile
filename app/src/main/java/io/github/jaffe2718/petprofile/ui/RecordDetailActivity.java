@@ -145,6 +145,8 @@ public class RecordDetailActivity extends AppCompatActivity {
             params.setMargins(0, 0, 12, 0);
             imageView.setLayoutParams(params);
             imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            imageView.setBackgroundResource(R.drawable.bg_thumb_rounded);
+            imageView.setClipToOutline(true);
             Glide.with(this).load(image.uri).into(imageView);
             imagesContainer.addView(imageView);
         }

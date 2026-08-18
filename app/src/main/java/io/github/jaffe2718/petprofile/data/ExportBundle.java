@@ -12,6 +12,7 @@ import java.util.List;
 
 public class ExportBundle {
     public String rootProfileId;
+    public KeeperInfo keeperInfo;
     public List<String> descendantIds = new ArrayList<>();
     public List<ProfileEntity> profiles = new ArrayList<>();
     public List<ProfileCustomFieldEntity> customFields = new ArrayList<>();
