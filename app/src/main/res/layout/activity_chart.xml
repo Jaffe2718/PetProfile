@@ -10,12 +10,13 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/surface"
-        app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
+        app:navigationIcon="@drawable/ic_close"
         app:navigationIconTint="@color/text_primary"
         app:title="@string/label_chart" />
 
     <Spinner
         android:id="@+id/fieldSpinner"
+        style="@style/Widget.PetProfile.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="12dp" />

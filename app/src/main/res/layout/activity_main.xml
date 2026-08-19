@@ -6,7 +6,8 @@
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/surface">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
@@ -15,17 +16,12 @@
             android:background="@color/surface"
             app:navigationIconTint="@color/text_primary"
             app:title="@string/title_profiles" />
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
+            android:id="@+id/searchBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@color/surface"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="12dp"
@@ -71,51 +67,51 @@
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_filter_funnel" />
 
-            <com.google.android.material.button.MaterialButton
+            <ImageButton
                 android:id="@+id/modeButton"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="112dp"
+                android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
-                android:gravity="center"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingStart="0dp"
-                android:paddingEnd="0dp"
-                android:text="@string/mode_list" />
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/mode_list"
+                android:padding="12dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_mode_list" />
         </LinearLayout>
+    </com.google.android.material.appbar.AppBarLayout>
 
-        <FrameLayout
-            android:id="@+id/contentFrame"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/profileRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="96dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <FrameLayout
+        android:id="@+id/contentFrame"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="124dp"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no">
+
+        <TextView
+            android:id="@+id/emptyTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/empty_profiles"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
+        <io.github.jaffe2718.petprofile.ui.PedigreeView
+            android:id="@+id/pedigreeView"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/profileRecyclerView"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:paddingBottom="96dp" />
-
-            <TextView
-                android:id="@+id/emptyTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="@string/empty_profiles"
-                android:textSize="16sp"
-                android:visibility="gone" />
-
-            <io.github.jaffe2718.petprofile.ui.PedigreeView
-                android:id="@+id/pedigreeView"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="gone" />
-        </FrameLayout>
-    </LinearLayout>
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/addProfileFab"

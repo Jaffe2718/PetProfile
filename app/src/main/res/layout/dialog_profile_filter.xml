@@ -17,6 +17,7 @@
 
     <Spinner
         android:id="@+id/filterYearSpinner"
+        style="@style/Widget.PetProfile.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp" />
@@ -30,6 +31,7 @@
 
     <Spinner
         android:id="@+id/filterGenderSpinner"
+        style="@style/Widget.PetProfile.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp" />
@@ -43,6 +45,7 @@
 
     <Spinner
         android:id="@+id/filterStatusSpinner"
+        style="@style/Widget.PetProfile.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp" />

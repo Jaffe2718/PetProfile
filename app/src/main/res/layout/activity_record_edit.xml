@@ -13,7 +13,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/surface"
-            app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
+            app:navigationIcon="@drawable/ic_close"
             app:navigationIconTint="@color/text_primary"
             app:title="@string/action_add_record" />
     </com.google.android.material.appbar.AppBarLayout>

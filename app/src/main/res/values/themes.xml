@@ -58,4 +58,13 @@
         <item name="android:paddingStart">20dp</item>
         <item name="android:paddingEnd">20dp</item>
     </style>
+
+    <style name="Widget.PetProfile.Spinner" parent="Widget.AppCompat.Spinner">
+        <item name="android:background">@drawable/bg_spinner_ios</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">34dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:popupBackground">@color/surface</item>
+    </style>
 </resources>

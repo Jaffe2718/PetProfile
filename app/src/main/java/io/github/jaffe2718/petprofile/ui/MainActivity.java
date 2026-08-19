@@ -9,8 +9,10 @@ import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,7 +24,6 @@ import androidx.core.os.LocaleListCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.appbar.MaterialToolbar;
 import io.github.jaffe2718.petprofile.R;
@@ -52,8 +53,14 @@ public class MainActivity extends AppCompatActivity {
     private ProfileListAdapter adapter;
     private RecyclerView recyclerView;
     private TextView emptyTextView;
+    private FrameLayout contentFrame;
+    private View searchBar;
     private PedigreeView pedigreeView;
-    private MaterialButton modeButton;
+    private float searchBarCollapsedOffset;
+    private int searchBarHeight = -1;
+    private float lastTouchY;
+    private boolean touchActive;
+    private ImageButton modeButton;
     private ImageButton filterButton;
     private ImageButton sortButton;
     private EditText searchEditText;
@@ -74,11 +81,13 @@ public class MainActivity extends AppCompatActivity {
 
         recyclerView = findViewById(R.id.profileRecyclerView);
         emptyTextView = findViewById(R.id.emptyTextView);
+        contentFrame = findViewById(R.id.contentFrame);
         pedigreeView = findViewById(R.id.pedigreeView);
         modeButton = findViewById(R.id.modeButton);
         filterButton = findViewById(R.id.filterButton);
         sortButton = findViewById(R.id.sortButton);
         searchEditText = findViewById(R.id.searchEditText);
+        searchBar = findViewById(R.id.searchBar);
         FloatingActionButton addProfileFab = findViewById(R.id.addProfileFab);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -103,6 +112,21 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         recyclerView.setAdapter(adapter);
+        recyclerView.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
+            @Override
+            public boolean onInterceptTouchEvent(RecyclerView recyclerView, android.view.MotionEvent event) {
+                handleSearchBarTouch(event);
+                return false;
+            }
+
+            @Override
+            public void onTouchEvent(RecyclerView recyclerView, android.view.MotionEvent event) {
+            }
+
+            @Override
+            public void onRequestDisallowInterceptTouchEvent(boolean disallowIntercept) {
+            }
+        });
 
         searchEditText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -173,14 +197,7 @@ public class MainActivity extends AppCompatActivity {
             return sortAscending ? comparison : -comparison;
         });
         filteredDetails = result;
-        if (listMode) {
-            adapter.setItems(filteredDetails);
-            emptyTextView.setVisibility(filteredDetails.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE);
-            recyclerView.setVisibility(android.view.View.VISIBLE);
-            pedigreeView.setVisibility(android.view.View.GONE);
-        } else {
-            pedigreeView.setProfiles(filteredDetails);
-        }
+        updateModeUi();
     }
 
     private void toggleSortOrder() {
@@ -258,18 +275,63 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateModeUi() {
         sortButton.setVisibility(listMode ? View.VISIBLE : View.GONE);
+        modeButton.setImageResource(listMode ? R.drawable.ic_mode_list : R.drawable.ic_mode_pedigree);
+        modeButton.setContentDescription(getString(listMode ? R.string.mode_list : R.string.mode_pedigree));
         if (listMode) {
-            modeButton.setText(R.string.mode_list);
             recyclerView.setVisibility(android.view.View.VISIBLE);
-            emptyTextView.setVisibility(filteredDetails.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE);
+            boolean empty = filteredDetails.isEmpty();
+            contentFrame.setVisibility(empty ? android.view.View.VISIBLE : android.view.View.GONE);
+            emptyTextView.setVisibility(empty ? android.view.View.VISIBLE : android.view.View.GONE);
             pedigreeView.setVisibility(android.view.View.GONE);
             adapter.setItems(filteredDetails);
         } else {
-            modeButton.setText(R.string.mode_pedigree);
             recyclerView.setVisibility(android.view.View.GONE);
+            contentFrame.setVisibility(android.view.View.VISIBLE);
             emptyTextView.setVisibility(android.view.View.GONE);
             pedigreeView.setVisibility(android.view.View.VISIBLE);
             pedigreeView.setProfiles(filteredDetails);
+        }
+    }
+
+    private void applySearchBarScroll(float dy) {
+        if (searchBar == null || !listMode) {
+            return;
+        }
+        if (searchBarHeight <= 0) {
+            searchBarHeight = searchBar.getHeight();
+        }
+        if (searchBarHeight <= 0) {
+            return;
+        }
+        searchBarCollapsedOffset += dy;
+        searchBarCollapsedOffset = Math.max(0f, Math.min(searchBarHeight, searchBarCollapsedOffset));
+        int newHeight = Math.max(0, Math.round(searchBarHeight - searchBarCollapsedOffset));
+        ViewGroup.LayoutParams params = searchBar.getLayoutParams();
+        if (params.height != newHeight) {
+            params.height = newHeight;
+            searchBar.setLayoutParams(params);
+        }
+    }
+
+    private void handleSearchBarTouch(android.view.MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case android.view.MotionEvent.ACTION_DOWN:
+                lastTouchY = event.getRawY();
+                touchActive = true;
+                break;
+            case android.view.MotionEvent.ACTION_MOVE:
+                if (touchActive) {
+                    float delta = lastTouchY - event.getRawY();
+                    lastTouchY = event.getRawY();
+                    applySearchBarScroll(delta);
+                }
+                break;
+            case android.view.MotionEvent.ACTION_UP:
+            case android.view.MotionEvent.ACTION_CANCEL:
+                touchActive = false;
+                break;
+            default:
+                break;
         }
     }
 
@@ -366,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
         if (draftKeeperInfo.hasHomePlace()) {
             homeButton.setText(draftKeeperInfo.homePlace);
         } else {
-            homeButton.setText(R.string.action_pick_location);
+            homeButton.setText(R.string.label_home_place);
         }
     }
 

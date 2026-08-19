@@ -13,7 +13,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/surface"
-            app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
+            app:navigationIcon="@drawable/ic_close"
             app:navigationIconTint="@color/text_primary"
             app:title="@string/action_add_profile" />
     </com.google.android.material.appbar.AppBarLayout>
@@ -234,12 +234,13 @@
                 android:orientation="horizontal">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="88dp"
                     android:layout_height="wrap_content"
                     android:text="@string/label_father" />
 
                 <Spinner
                     android:id="@+id/fatherSpinner"
+                    style="@style/Widget.PetProfile.Spinner"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"
@@ -253,12 +254,13 @@
                 android:orientation="horizontal">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="88dp"
                     android:layout_height="wrap_content"
                     android:text="@string/label_mother" />
 
                 <Spinner
                     android:id="@+id/motherSpinner"
+                    style="@style/Widget.PetProfile.Spinner"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"

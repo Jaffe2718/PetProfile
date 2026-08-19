@@ -3,8 +3,8 @@ package io.github.jaffe2718.petprofile.ui;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -72,7 +72,7 @@ public class RecordAdapter extends RecyclerView.Adapter<RecordAdapter.Holder> {
         private final TextView time;
         private final TextView title;
         private final TextView summary;
-        private final Button deleteButton;
+        private final ImageButton deleteButton;
         private final LinearLayout thumbnailsContainer;
 
         Holder(@NonNull View itemView) {

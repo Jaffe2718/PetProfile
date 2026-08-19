@@ -80,6 +80,7 @@
     <string name="label_species">Species</string>
     <string name="label_subspecies">Subspecies</string>
     <string name="label_nickname">Nickname</string>
+    <string name="label_home_place">Home</string>
     <string name="label_gender">Gender</string>
     <string name="gender_female">Female</string>
     <string name="gender_male">Male</string>

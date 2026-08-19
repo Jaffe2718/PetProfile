@@ -4,6 +4,7 @@
     <item
         android:id="@+id/action_records"
         android:icon="@drawable/ic_notebook"
+        app:iconTint="@color/text_primary"
         android:title="@string/label_records"
         app:showAsAction="always" />
 </menu>

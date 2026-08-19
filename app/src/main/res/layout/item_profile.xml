@@ -72,7 +72,7 @@
                     android:layout_height="44dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/action_edit"
-                    android:src="@android:drawable/ic_menu_edit" />
+                    android:src="@drawable/ic_edit" />
 
                 <ImageButton
                     android:id="@+id/deleteButton"
@@ -80,7 +80,7 @@
                     android:layout_height="44dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/action_delete"
-                    android:src="@android:drawable/ic_menu_delete" />
+                    android:src="@drawable/ic_trash" />
             </LinearLayout>
         </LinearLayout>
 

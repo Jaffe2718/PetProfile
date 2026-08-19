@@ -80,6 +80,7 @@
     <string name="label_species">种</string>
     <string name="label_subspecies">亚种</string>
     <string name="label_nickname">昵称</string>
+    <string name="label_home_place">常驻地</string>
     <string name="label_gender">性别</string>
     <string name="gender_female">雌</string>
     <string name="gender_male">雄</string>

@@ -905,7 +905,29 @@ public class PedigreeView extends View {
         canvas.restore();
         canvas.drawPath(path, borderPaint);
         textPaint.setTextSize(34f);
-        canvas.drawText(node.nickname(), node.bounds.centerX(), node.bounds.bottom + NICKNAME_OFFSET, textPaint);
+        List<String> nicknameLines = splitNickname(node.nickname());
+        float lineHeight = textPaint.getFontSpacing();
+        float startY = node.bounds.bottom + NICKNAME_OFFSET;
+        for (int i = 0; i < nicknameLines.size(); i++) {
+            canvas.drawText(nicknameLines.get(i), node.bounds.centerX(), startY + i * lineHeight, textPaint);
+        }
+    }
+
+    private List<String> splitNickname(String nickname) {
+        List<String> lines = new ArrayList<>();
+        if (nickname == null) {
+            nickname = "";
+        }
+        lines.add(nickname.length() > 4 ? nickname.substring(0, 4) : nickname);
+        if (nickname.length() > 4) {
+            String rest = nickname.substring(4);
+            if (rest.length() > 4) {
+                lines.add(rest.substring(0, 3) + "…");
+            } else {
+                lines.add(rest);
+            }
+        }
+        return lines;
     }
 
     @Override

@@ -5,10 +5,10 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.Spinner;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -72,19 +72,25 @@ public class FieldEditorAdapter extends RecyclerView.Adapter<FieldEditorAdapter.
     }
 
     class Holder extends RecyclerView.ViewHolder {
-        private final Spinner typeSpinner;
+        private final RadioGroup typeRadioGroup;
+        private final RadioButton typeFirstRadio;
+        private final RadioButton typeSecondRadio;
         private final EditText nameEditText;
         private final EditText valueEditText;
         private final EditText unitEditText;
+        private final View unitInputLayout;
         private final ImageButton deleteButton;
         private boolean binding;
 
         Holder(@NonNull View itemView) {
             super(itemView);
-            typeSpinner = itemView.findViewById(R.id.typeSpinner);
+            typeRadioGroup = itemView.findViewById(R.id.typeRadioGroup);
+            typeFirstRadio = itemView.findViewById(R.id.typeFirstRadio);
+            typeSecondRadio = itemView.findViewById(R.id.typeSecondRadio);
             nameEditText = itemView.findViewById(R.id.nameEditText);
             valueEditText = itemView.findViewById(R.id.valueEditText);
             unitEditText = itemView.findViewById(R.id.unitEditText);
+            unitInputLayout = itemView.findViewById(R.id.unitInputLayout);
             deleteButton = itemView.findViewById(R.id.deleteFieldButton);
         }
 
@@ -93,45 +99,26 @@ public class FieldEditorAdapter extends RecyclerView.Adapter<FieldEditorAdapter.
             String[] types = mode == MODE_PROFILE
                     ? new String[]{FieldType.TEXT, FieldType.NUMBER}
                     : new String[]{FieldType.NUMBER, FieldType.TAG};
-            String[] labels = new String[types.length];
-            for (int i = 0; i < types.length; i++) {
-                labels[i] = displayType(types[i]);
-            }
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                    itemView.getContext(),
-                    android.R.layout.simple_spinner_item,
-                    labels
-            );
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            typeSpinner.setAdapter(adapter);
-            int selected = 0;
-            for (int i = 0; i < types.length; i++) {
-                if (types[i].equals(field.type)) {
-                    selected = i;
-                    break;
-                }
-            }
             if (field.type == null || field.type.trim().isEmpty()) {
-                field.type = types[selected];
+                field.type = types[0];
             }
-            typeSpinner.setSelection(selected);
+            typeFirstRadio.setText(displayType(types[0]));
+            typeSecondRadio.setText(displayType(types[1]));
+            typeRadioGroup.check(types[1].equals(field.type)
+                    ? R.id.typeSecondRadio
+                    : R.id.typeFirstRadio);
             nameEditText.setText(field.name == null ? "" : field.name);
             valueEditText.setText(field.value == null ? "" : field.value);
             unitEditText.setText(field.unit == null ? "" : field.unit);
             updateUnitVisibility(field.type);
             binding = false;
 
-            typeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position2, long id) {
-                    if (binding) return;
-                    field.type = types[position2];
-                    updateUnitVisibility(field.type);
+            typeRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+                if (binding) {
+                    return;
                 }
-
-                @Override
-                public void onNothingSelected(android.widget.AdapterView<?> parent) {
-                }
+                field.type = checkedId == R.id.typeSecondRadio ? types[1] : types[0];
+                updateUnitVisibility(field.type);
             });
             attachTextWatcher(nameEditText, text -> field.name = text);
             attachTextWatcher(valueEditText, text -> field.value = text);
@@ -147,7 +134,7 @@ public class FieldEditorAdapter extends RecyclerView.Adapter<FieldEditorAdapter.
 
         private void updateUnitVisibility(String type) {
             boolean numeric = FieldType.NUMBER.equals(type);
-            unitEditText.setVisibility(numeric ? View.VISIBLE : View.GONE);
+            unitInputLayout.setVisibility(numeric ? View.VISIBLE : View.GONE);
         }
 
         private String displayType(String type) {

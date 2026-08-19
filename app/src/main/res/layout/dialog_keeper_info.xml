@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:backgroundTint="@color/button_soft_bg"
-        android:text="@string/action_pick_location"
+        android:text="@string/label_home_place"
         android:textColor="@color/button_soft_text" />
 
 </LinearLayout>

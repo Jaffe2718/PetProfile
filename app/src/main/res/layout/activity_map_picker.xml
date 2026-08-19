@@ -11,13 +11,16 @@
         android:layout_height="?attr/actionBarSize"
         android:background="@color/surface"
         app:navigationIconTint="@color/text_primary"
-        android:title="@string/map_picker_title">
+        app:title="@string/map_picker_title"
+        app:titleTextColor="@color/text_primary">
 
         <Spinner
             android:id="@+id/mapProviderSpinner"
+            style="@style/Widget.PetProfile.Spinner"
             android:layout_width="150dp"
             android:layout_height="match_parent"
             android:layout_gravity="end"
+            android:background="@drawable/bg_spinner_plain"
             android:gravity="center_vertical" />
     </com.google.android.material.appbar.MaterialToolbar>
 

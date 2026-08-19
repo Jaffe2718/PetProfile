@@ -26,6 +26,7 @@
 
             <Spinner
                 android:id="@+id/taxKingdomSpinner"
+                style="@style/Widget.PetProfile.Spinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
@@ -45,6 +46,7 @@
 
             <Spinner
                 android:id="@+id/taxPhylumSpinner"
+                style="@style/Widget.PetProfile.Spinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
@@ -64,6 +66,7 @@
 
             <Spinner
                 android:id="@+id/taxClassSpinner"
+                style="@style/Widget.PetProfile.Spinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
@@ -83,6 +86,7 @@
 
             <Spinner
                 android:id="@+id/taxOrderSpinner"
+                style="@style/Widget.PetProfile.Spinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
@@ -102,6 +106,7 @@
 
             <Spinner
                 android:id="@+id/taxFamilySpinner"
+                style="@style/Widget.PetProfile.Spinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
@@ -121,6 +126,7 @@
 
             <Spinner
                 android:id="@+id/taxGenusSpinner"
+                style="@style/Widget.PetProfile.Spinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
@@ -140,6 +146,7 @@
 
             <Spinner
                 android:id="@+id/taxSpeciesSpinner"
+                style="@style/Widget.PetProfile.Spinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
@@ -159,6 +166,7 @@
 
             <Spinner
                 android:id="@+id/taxSubspeciesSpinner"
+                style="@style/Widget.PetProfile.Spinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
