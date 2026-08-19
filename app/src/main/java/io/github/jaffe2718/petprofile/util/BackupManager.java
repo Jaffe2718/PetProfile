@@ -2,6 +2,8 @@ package io.github.jaffe2718.petprofile.util;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.webkit.MimeTypeMap;
 
 import com.google.gson.Gson;
@@ -19,6 +21,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,6 +35,7 @@ import java.util.zip.ZipOutputStream;
 public final class BackupManager {
     private static final Gson GSON = new Gson();
     private static final Pattern URI_PATTERN = Pattern.compile("(?i)(content|file)://[^\\s)\\]}\"']+");
+    private static final int IMAGE_NAME_LENGTH = 12;
 
     private BackupManager() {
     }
@@ -49,15 +54,16 @@ public final class BackupManager {
         ExportBundle copy = GSON.fromJson(GSON.toJson(bundle), ExportBundle.class);
         Map<String, String> originalToZip = new LinkedHashMap<>();
         Map<String, Uri> zipToUri = new LinkedHashMap<>();
+        ZipImageNamer namer = new ZipImageNamer(context);
 
         for (ProfileEntity profile : copy.profiles) {
-            profile.avatarUri = collectAndReplace(context, profile.avatarUri, originalToZip, zipToUri);
+            profile.avatarUri = collectAndReplace(context, profile.avatarUri, originalToZip, zipToUri, namer);
         }
         for (RecordEntity record : copy.records) {
-            record.notesMarkdown = replaceUrisInMarkdown(context, record.notesMarkdown, originalToZip, zipToUri);
+            record.notesMarkdown = replaceUrisInMarkdown(context, record.notesMarkdown, originalToZip, zipToUri, namer);
         }
         for (RecordImageEntity image : copy.recordImages) {
-            image.uri = collectAndReplace(context, image.uri, originalToZip, zipToUri);
+            image.uri = collectAndReplace(context, image.uri, originalToZip, zipToUri, namer);
         }
 
         try (ByteArrayOutputStream raw = new ByteArrayOutputStream();
@@ -147,7 +153,8 @@ public final class BackupManager {
             Context context,
             String uriText,
             Map<String, String> originalToZip,
-            Map<String, Uri> zipToUri
+            Map<String, Uri> zipToUri,
+            ZipImageNamer namer
     ) {
         if (uriText == null || uriText.trim().isEmpty()) {
             return uriText;
@@ -161,7 +168,7 @@ public final class BackupManager {
             return uriText;
         }
         String extension = guessExtension(context, uri);
-        String zipPath = "images/" + (originalToZip.size() + 1) + extension;
+        String zipPath = namer.nextPath(extension);
         originalToZip.put(uriText, zipPath);
         zipToUri.put(zipPath, uri);
         return zipPath;
@@ -171,7 +178,8 @@ public final class BackupManager {
             Context context,
             String markdown,
             Map<String, String> originalToZip,
-            Map<String, Uri> zipToUri
+            Map<String, Uri> zipToUri,
+            ZipImageNamer namer
     ) {
         if (markdown == null || markdown.isEmpty()) {
             return markdown;
@@ -179,7 +187,7 @@ public final class BackupManager {
         Matcher matcher = URI_PATTERN.matcher(markdown);
         StringBuffer result = new StringBuffer();
         while (matcher.find()) {
-            String replacement = collectAndReplace(context, matcher.group(), originalToZip, zipToUri);
+            String replacement = collectAndReplace(context, matcher.group(), originalToZip, zipToUri, namer);
             matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(result);
@@ -256,5 +264,47 @@ public final class BackupManager {
             }
         }
         return ".jpg";
+    }
+
+    private static final class ZipImageNamer {
+        private final String deviceId;
+        private final long timestamp;
+        private final String nonce;
+        private int counter;
+
+        ZipImageNamer(Context context) {
+            deviceId = deviceFingerprint(context);
+            timestamp = System.currentTimeMillis();
+            nonce = IdUtil.randomId();
+        }
+
+        String nextPath(String extension) {
+            String raw = deviceId + "|" + timestamp + "|" + nonce + "|" + (counter++);
+            byte[] digest = sha256(raw);
+            String name = Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(digest)
+                    .substring(0, IMAGE_NAME_LENGTH);
+            return "images/" + name + extension;
+        }
+    }
+
+    private static String deviceFingerprint(Context context) {
+        String androidId = Settings.Secure.getString(
+                context.getContentResolver(),
+                Settings.Secure.ANDROID_ID
+        );
+        if (androidId == null || androidId.trim().isEmpty()) {
+            androidId = Build.FINGERPRINT + "|" + Build.MODEL + "|" + Build.SERIAL;
+        }
+        return androidId;
+    }
+
+    private static byte[] sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to hash image name", e);
+        }
     }
 }
