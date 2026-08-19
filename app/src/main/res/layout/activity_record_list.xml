@@ -47,8 +47,8 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
         android:contentDescription="@string/action_add_record"
-        android:src="@android:drawable/ic_input_add"
-        app:backgroundTint="@color/primary"
-        app:tint="@android:color/white" />
+        android:src="@drawable/ic_plus"
+        app:backgroundTint="@android:color/white"
+        app:tint="@color/text_primary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

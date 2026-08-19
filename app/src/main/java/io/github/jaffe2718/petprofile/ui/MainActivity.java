@@ -285,12 +285,26 @@ public class MainActivity extends AppCompatActivity {
             pedigreeView.setVisibility(android.view.View.GONE);
             adapter.setItems(filteredDetails);
         } else {
+            resetSearchBar();
             recyclerView.setVisibility(android.view.View.GONE);
             contentFrame.setVisibility(android.view.View.VISIBLE);
             emptyTextView.setVisibility(android.view.View.GONE);
             pedigreeView.setVisibility(android.view.View.VISIBLE);
             pedigreeView.setProfiles(filteredDetails);
         }
+    }
+
+    private void resetSearchBar() {
+        if (searchBar == null) {
+            return;
+        }
+        if (searchBarHeight <= 0) {
+            searchBarHeight = searchBar.getHeight();
+        }
+        searchBarCollapsedOffset = 0f;
+        ViewGroup.LayoutParams params = searchBar.getLayoutParams();
+        params.height = searchBarHeight > 0 ? searchBarHeight : ViewGroup.LayoutParams.WRAP_CONTENT;
+        searchBar.setLayoutParams(params);
     }
 
     private void applySearchBarScroll(float dy) {

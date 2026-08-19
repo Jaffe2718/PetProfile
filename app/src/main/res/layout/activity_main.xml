@@ -47,34 +47,34 @@
 
             <ImageButton
                 android:id="@+id/sortButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_sort"
-                android:padding="12dp"
+                android:padding="6dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_sort_descending" />
 
             <ImageButton
                 android:id="@+id/filterButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_filter"
-                android:padding="12dp"
+                android:padding="6dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_filter_funnel" />
 
             <ImageButton
                 android:id="@+id/modeButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/mode_list"
-                android:padding="12dp"
+                android:padding="6dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_mode_list" />
         </LinearLayout>
@@ -120,8 +120,8 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
         android:contentDescription="@string/action_add_profile"
-        android:src="@android:drawable/ic_input_add"
-        app:backgroundTint="@color/primary"
-        app:tint="@android:color/white" />
+        android:src="@drawable/ic_plus"
+        app:backgroundTint="@android:color/white"
+        app:tint="@color/text_primary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
