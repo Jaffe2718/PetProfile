@@ -2,6 +2,7 @@ package io.github.jaffe2718.petprofile.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ImageView;
@@ -43,6 +44,7 @@ public class RecordDetailActivity extends AppCompatActivity {
     private TextView timeTextView;
     private TextView locationTextView;
     private TextView metadataTextView;
+    private View metadataCard;
     private LinearLayout attributesContainer;
     private TextView notesTextView;
     private LinearLayout imagesContainer;
@@ -68,6 +70,7 @@ public class RecordDetailActivity extends AppCompatActivity {
         timeTextView = findViewById(R.id.detailTimeTextView);
         locationTextView = findViewById(R.id.detailLocationTextView);
         metadataTextView = findViewById(R.id.detailMetadataTextView);
+        metadataCard = findViewById(R.id.metadataCard);
         attributesContainer = findViewById(R.id.detailAttributesContainer);
         notesTextView = findViewById(R.id.detailNotesTextView);
         imagesContainer = findViewById(R.id.detailImagesContainer);
@@ -115,7 +118,9 @@ public class RecordDetailActivity extends AppCompatActivity {
         }
         locationTextView.setText(location.length() == 0 ? getString(R.string.label_none) : location.toString());
 
-        metadataTextView.setText(buildMetadata(details));
+        String metadata = buildMetadata(details);
+        metadataTextView.setText(metadata);
+        metadataCard.setVisibility(metadata.isEmpty() ? View.GONE : View.VISIBLE);
         attributesContainer.removeAllViews();
         for (RecordFieldEntity field : details.fields) {
             TextView fieldView = new TextView(this);
@@ -155,6 +160,9 @@ public class RecordDetailActivity extends AppCompatActivity {
     private String buildMetadata(RecordDetails details) {
         StringBuilder builder = new StringBuilder();
         if (RecordType.ESTABLISHMENT.equals(details.record.type)) {
+            if (details.record.keeperName != null && !details.record.keeperName.trim().isEmpty()) {
+                append(builder, getString(R.string.label_keeper) + ": " + details.record.keeperName);
+            }
             append(builder, getString(R.string.record_establishment) + ": " + sourceLabel(details.record.establishmentSource));
         } else if (RecordType.ARCHIVE.equals(details.record.type)) {
             append(builder, getString(R.string.record_archive) + ": " + archiveReasonLabel(details.record.archiveReason));
@@ -166,7 +174,7 @@ public class RecordDetailActivity extends AppCompatActivity {
             append(builder, getString(R.string.label_transfer_from_place) + ": " + safe(details.record.transferFromPlace));
             append(builder, getString(R.string.label_transfer_to_place) + ": " + safe(details.record.transferToPlace));
         }
-        return builder.length() == 0 ? getString(R.string.label_none) : builder.toString();
+        return builder.toString();
     }
 
     private void append(StringBuilder builder, String value) {

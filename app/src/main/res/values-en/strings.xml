@@ -96,6 +96,7 @@
     <string name="record_establishment_source_breed">Bred</string>
     <string name="record_establishment_source_purchase">Purchased</string>
     <string name="label_establishment_source">Source</string>
+    <string name="label_keeper">Keeper</string>
     <string name="record_archive_death">Death</string>
     <string name="record_archive_transfer">Transferred out</string>
     <string name="label_archive_reason">Archive Reason</string>

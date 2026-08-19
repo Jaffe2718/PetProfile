@@ -16,6 +16,7 @@
             android:id="@+id/taxKingdomRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingVertical="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -36,6 +37,7 @@
             android:id="@+id/taxPhylumRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingVertical="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -56,6 +58,7 @@
             android:id="@+id/taxClassRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingVertical="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -76,6 +79,7 @@
             android:id="@+id/taxOrderRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingVertical="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -96,6 +100,7 @@
             android:id="@+id/taxFamilyRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingVertical="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -116,6 +121,7 @@
             android:id="@+id/taxGenusRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingVertical="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -136,6 +142,7 @@
             android:id="@+id/taxSpeciesRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingVertical="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -156,6 +163,7 @@
             android:id="@+id/taxSubspeciesRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingVertical="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 

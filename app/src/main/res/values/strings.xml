@@ -96,6 +96,7 @@
     <string name="record_establishment_source_breed">繁育</string>
     <string name="record_establishment_source_purchase">购入</string>
     <string name="label_establishment_source">来源</string>
+    <string name="label_keeper">饲养者</string>
     <string name="record_archive_death">死亡</string>
     <string name="record_archive_transfer">转出</string>
     <string name="label_archive_reason">归档原因</string>

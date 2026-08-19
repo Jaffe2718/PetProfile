@@ -69,6 +69,7 @@ public class RecordEditActivity extends AppCompatActivity {
     private Button locationButton;
     private LinearLayout establishmentExtraLayout;
     private RadioGroup establishmentSourceRadioGroup;
+    private EditText establishmentKeeperEditText;
     private LinearLayout archiveExtraLayout;
     private RadioGroup archiveReasonRadioGroup;
     private LinearLayout transferExtraLayout;
@@ -128,6 +129,7 @@ public class RecordEditActivity extends AppCompatActivity {
         locationButton = findViewById(R.id.locationButton);
         establishmentExtraLayout = findViewById(R.id.establishmentExtraLayout);
         establishmentSourceRadioGroup = findViewById(R.id.establishmentSourceRadioGroup);
+        establishmentKeeperEditText = findViewById(R.id.establishmentKeeperEditText);
         archiveExtraLayout = findViewById(R.id.archiveExtraLayout);
         archiveReasonRadioGroup = findViewById(R.id.archiveReasonRadioGroup);
         transferExtraLayout = findViewById(R.id.transferExtraLayout);
@@ -224,6 +226,7 @@ public class RecordEditActivity extends AppCompatActivity {
                 if (existingRecord.establishmentSource != null) {
                     selectEstablishmentSource(existingRecord.establishmentSource);
                 }
+                establishmentKeeperEditText.setText(existingRecord.keeperName);
                 if (existingRecord.archiveReason != null) {
                     selectArchiveReason(existingRecord.archiveReason);
                 }
@@ -353,6 +356,12 @@ public class RecordEditActivity extends AppCompatActivity {
             return;
         }
         KeeperInfo keeperInfo = KeeperInfoManager.load(this);
+        if (RecordType.ESTABLISHMENT.equals(type)) {
+            if (keeperInfo.hasNickname() && text(establishmentKeeperEditText).isEmpty()) {
+                establishmentKeeperEditText.setText(keeperInfo.nickname);
+            }
+            return;
+        }
         if (RecordType.TRANSFER.equals(type)) {
             if (keeperInfo.hasNickname() && text(transferToPersonEditText).isEmpty()) {
                 transferToPersonEditText.setText(keeperInfo.nickname);
@@ -498,6 +507,7 @@ public class RecordEditActivity extends AppCompatActivity {
         record.longitude = longitude;
         record.notesMarkdown = notesEditText.getText().toString();
         record.establishmentSource = RecordType.ESTABLISHMENT.equals(currentType) ? establishmentSource() : null;
+        record.keeperName = RecordType.ESTABLISHMENT.equals(currentType) ? text(establishmentKeeperEditText) : null;
         record.archiveReason = RecordType.ARCHIVE.equals(currentType) ? archiveReason() : null;
         record.transferFromPerson = text(transferFromPersonEditText);
         record.transferToPerson = text(transferToPersonEditText);

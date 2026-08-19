@@ -352,6 +352,9 @@ public final class CardShareManager {
     private static List<String> metadataLines(Context context, RecordEntity record) {
         List<String> lines = new ArrayList<>();
         if (RecordType.ESTABLISHMENT.equals(record.type)) {
+            if (record.keeperName != null && !record.keeperName.trim().isEmpty()) {
+                lines.add(context.getString(R.string.label_keeper) + ": " + record.keeperName);
+            }
             lines.add(context.getString(R.string.label_establishment_source)
                     + ": " + establishmentSourceLabel(context, record.establishmentSource));
         } else if (RecordType.ARCHIVE.equals(record.type)) {

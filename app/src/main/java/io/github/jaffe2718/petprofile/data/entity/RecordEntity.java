@@ -24,6 +24,7 @@ public class RecordEntity {
     public String profileId;
     @NonNull
     public String title = "";
+    public String keeperName;
     public String type;
     public long timestamp;
 

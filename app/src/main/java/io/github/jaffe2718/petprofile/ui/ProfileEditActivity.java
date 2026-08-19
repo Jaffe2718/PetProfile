@@ -35,6 +35,7 @@ import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
+import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
 
@@ -98,6 +99,7 @@ public class ProfileEditActivity extends AppCompatActivity {
     private Button establishmentLocationButton;
     private EditText establishmentNotesEditText;
     private EditText establishmentTitleEditText;
+    private EditText establishmentKeeperEditText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,6 +125,10 @@ public class ProfileEditActivity extends AppCompatActivity {
         if (profileId == null) {
             profileIdTextView.setText(R.string.label_none);
             setEstablishmentVisibility(true);
+            io.github.jaffe2718.petprofile.data.KeeperInfo keeperInfo = KeeperInfoManager.load(this);
+            if (keeperInfo.hasNickname()) {
+                establishmentKeeperEditText.setText(keeperInfo.nickname);
+            }
         } else {
             setEstablishmentVisibility(false);
             loadProfile();
@@ -151,6 +157,7 @@ public class ProfileEditActivity extends AppCompatActivity {
         establishmentLocationButton = findViewById(R.id.establishmentLocationButton);
         establishmentNotesEditText = findViewById(R.id.establishmentNotesEditText);
         establishmentTitleEditText = findViewById(R.id.establishmentTitleEditText);
+        establishmentKeeperEditText = findViewById(R.id.establishmentKeeperEditText);
     }
 
     private void setupSpinners() {
@@ -545,6 +552,7 @@ public class ProfileEditActivity extends AppCompatActivity {
             establishment.longitude = establishmentLongitude;
             establishment.notesMarkdown = text(establishmentNotesEditText);
             establishment.establishmentSource = sourceValue();
+            establishment.keeperName = text(establishmentKeeperEditText);
             List<RecordFieldEntity> establishmentFields = buildEstablishmentFields();
             if (establishmentFields == null) {
                 return;
@@ -724,6 +732,10 @@ public class ProfileEditActivity extends AppCompatActivity {
         View titleParent = (View) establishmentTitleEditText.getParent();
         if (titleParent != null) {
             titleParent.setVisibility(visibility);
+        }
+        View keeperParent = (View) establishmentKeeperEditText.getParent();
+        if (keeperParent != null) {
+            keeperParent.setVisibility(visibility);
         }
     }
 

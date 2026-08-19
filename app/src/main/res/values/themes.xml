@@ -6,6 +6,9 @@
         <item name="colorSecondary">@color/accent</item>
         <item name="colorSurface">@color/surface</item>
         <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceContainer">@color/surface</item>
+        <item name="colorSurfaceContainerHigh">@color/surface</item>
+        <item name="colorSurfaceContainerHighest">@color/surface</item>
         <item name="colorSurfaceVariant">@color/surface_subtle</item>
         <item name="colorOnSurfaceVariant">@color/text_secondary</item>
         <item name="android:windowBackground">@color/surface_subtle</item>
@@ -63,6 +66,8 @@
         <item name="android:background">@drawable/bg_spinner_ios</item>
         <item name="android:paddingStart">14dp</item>
         <item name="android:paddingEnd">34dp</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
         <item name="android:minHeight">48dp</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:popupBackground">@color/surface</item>
