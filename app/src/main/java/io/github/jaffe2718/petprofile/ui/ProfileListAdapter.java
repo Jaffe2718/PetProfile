@@ -91,6 +91,7 @@ public class ProfileListAdapter extends RecyclerView.Adapter<ProfileListAdapter.
 
         void bind(ProfileDetails details) {
             applyGenderBackground(details);
+            applyArchivedTextColor(details);
             name.setText(TaxonomyUtil.displayName(details.profile, details.customFields));
             taxonomy.setText(TaxonomyUtil.speciesDisplay(details.profile));
             meta.setText(buildMeta(details));
@@ -176,6 +177,11 @@ public class ProfileListAdapter extends RecyclerView.Adapter<ProfileListAdapter.
             if (!(itemView instanceof MaterialCardView)) {
                 return;
             }
+            if (details.profile.isArchived()) {
+                ((MaterialCardView) itemView).setCardBackgroundColor(
+                        itemView.getContext().getColor(R.color.profile_archived_bg));
+                return;
+            }
             String gender = details.profile.gender;
             int color;
             if ("MALE".equals(gender)) {
@@ -188,8 +194,27 @@ public class ProfileListAdapter extends RecyclerView.Adapter<ProfileListAdapter.
             ((MaterialCardView) itemView).setCardBackgroundColor(color);
         }
 
+        private void applyArchivedTextColor(ProfileDetails details) {
+            if (details.profile.isArchived()) {
+                int archivedText = itemView.getContext().getColor(R.color.profile_archived_text);
+                name.setTextColor(archivedText);
+                taxonomy.setTextColor(archivedText);
+                meta.setTextColor(archivedText);
+            } else {
+                name.setTextColor(itemView.getContext().getColor(R.color.text_primary));
+                taxonomy.setTextColor(itemView.getContext().getColor(R.color.text_primary));
+                meta.setTextColor(itemView.getContext().getColor(R.color.text_secondary));
+            }
+        }
+
         private String buildMeta(ProfileDetails details) {
             List<String> parts = new ArrayList<>();
+            String gender = details.profile.gender;
+            if ("MALE".equals(gender)) {
+                parts.add("♂");
+            } else if ("FEMALE".equals(gender)) {
+                parts.add("♀");
+            }
             for (ProfileCustomFieldEntity field : details.customFields) {
                 if ("origin".equalsIgnoreCase(field.fieldKey)
                         || "产地".equals(field.fieldName)

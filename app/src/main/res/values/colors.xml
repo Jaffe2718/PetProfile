@@ -10,6 +10,8 @@
     <color name="profile_male_bg">#E5F1FC</color>
     <color name="profile_female_bg">#FBE8EA</color>
     <color name="profile_unknown_bg">#EAF3ED</color>
+    <color name="profile_archived_bg">#E6E9EB</color>
+    <color name="profile_archived_text">#4A4F55</color>
     <color name="record_establishment_bg">#E7F1FC</color>
     <color name="record_daily_bg">#EAF3ED</color>
     <color name="record_transfer_bg">#F1E8FA</color>
