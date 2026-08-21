@@ -35,6 +35,7 @@ import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
+import io.github.jaffe2718.petprofile.util.ImageStorage;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
@@ -263,7 +264,7 @@ public class ProfileEditActivity extends AppCompatActivity {
             public void onSuccess(ProfileDetails details) {
                 existingProfile = details.profile;
                 profileIdTextView.setText(existingProfile.id);
-                avatarUri = existingProfile.avatarUri;
+                avatarUri = ImageStorage.copyToPrivateStorage(ProfileEditActivity.this, existingProfile.avatarUri);
                 kingdomEditText.setText(existingProfile.kingdom);
                 phylumEditText.setText(existingProfile.phylum);
                 classEditText.setText(existingProfile.taxClass);
@@ -329,8 +330,7 @@ public class ProfileEditActivity extends AppCompatActivity {
     }
 
     private void appendEstablishmentImage(Uri uri) {
-        persistImagePermission(uri);
-        String text = uri.toString();
+        String text = ImageStorage.copyToPrivateStorage(this, uri.toString());
         establishmentImageUris.add(text);
         establishmentNotesEditText.append("\n![image](" + text + ")");
     }
@@ -760,7 +760,7 @@ public class ProfileEditActivity extends AppCompatActivity {
                 getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
             } catch (Exception ignored) {
             }
-            avatarUri = uri.toString();
+            avatarUri = ImageStorage.copyToPrivateStorage(this, uri.toString());
             showAvatar();
         } else if (requestCode == REQUEST_ESTABLISHMENT_IMAGES && resultCode == RESULT_OK && data != null) {
             if (data.getClipData() != null) {

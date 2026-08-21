@@ -25,6 +25,7 @@ import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
 import io.github.jaffe2718.petprofile.util.Async;
+import io.github.jaffe2718.petprofile.util.ImageStorage;
 import io.github.jaffe2718.petprofile.util.IdUtil;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
@@ -77,6 +78,11 @@ public class PetRepository {
                 List<ProfileEntity> profiles = dao.getAllProfiles();
                 List<ProfileDetails> result = new ArrayList<>();
                 for (ProfileEntity profile : profiles) {
+                    String privateAvatar = ImageStorage.copyToPrivateStorage(context, profile.avatarUri);
+                    if (!java.util.Objects.equals(privateAvatar, profile.avatarUri)) {
+                        profile.avatarUri = privateAvatar;
+                        dao.updateProfile(profile);
+                    }
                     ProfileDetails details = new ProfileDetails();
                     details.profile = profile;
                     details.customFields.addAll(dao.getCustomFields(profile.id));
@@ -104,6 +110,11 @@ public class PetRepository {
                 details.profile = dao.getById(profileId);
                 if (details.profile == null) {
                     throw new IllegalStateException("Profile not found: " + profileId);
+                }
+                String privateAvatar = ImageStorage.copyToPrivateStorage(context, details.profile.avatarUri);
+                if (!java.util.Objects.equals(privateAvatar, details.profile.avatarUri)) {
+                    details.profile.avatarUri = privateAvatar;
+                    dao.updateProfile(details.profile);
                 }
                 details.customFields.addAll(dao.getCustomFields(profileId));
                 details.parentIds.addAll(dao.getParentIds(profileId));
@@ -154,10 +165,19 @@ public class PetRepository {
                     return;
                 }
                 List<RecordImageEntity> images = database.recordDao().getImagesForRecords(recordIds);
+                List<RecordImageEntity> privateImages = new ArrayList<>();
                 for (RecordImageEntity image : images) {
                     if (image.recordId != null && image.uri != null && !image.uri.trim().isEmpty()) {
+                        String privateUri = ImageStorage.copyToPrivateStorage(context, image.uri);
+                        if (!java.util.Objects.equals(privateUri, image.uri)) {
+                            image.uri = privateUri;
+                            privateImages.add(image);
+                        }
                         result.computeIfAbsent(image.recordId, ignored -> new ArrayList<>()).add(image.uri);
                     }
+                }
+                if (!privateImages.isEmpty()) {
+                    database.recordDao().insertImages(privateImages);
                 }
                 Async.post(callback, result, null);
             } catch (Throwable t) {
@@ -196,8 +216,24 @@ public class PetRepository {
                 if (details.record == null) {
                     throw new IllegalStateException("Record not found: " + recordId);
                 }
+                String privateNotes = ImageStorage.copyMarkdownImages(context, details.record.notesMarkdown);
+                if (!privateNotes.equals(details.record.notesMarkdown)) {
+                    details.record.notesMarkdown = privateNotes;
+                    dao.updateRecord(details.record);
+                }
                 details.fields.addAll(dao.getFields(recordId));
                 details.images.addAll(dao.getImages(recordId));
+                List<RecordImageEntity> privateImages = new ArrayList<>();
+                for (RecordImageEntity image : details.images) {
+                    String privateUri = ImageStorage.copyToPrivateStorage(context, image.uri);
+                    if (!java.util.Objects.equals(privateUri, image.uri)) {
+                        image.uri = privateUri;
+                        privateImages.add(image);
+                    }
+                }
+                if (!privateImages.isEmpty()) {
+                    dao.insertImages(privateImages);
+                }
                 Async.post(callback, details, null);
             } catch (Throwable t) {
                 Async.post(callback, null, t);

@@ -34,6 +34,7 @@ import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
+import io.github.jaffe2718.petprofile.util.ImageStorage;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 
@@ -217,6 +218,10 @@ public class RecordEditActivity extends AppCompatActivity {
                 selectTypeRadio(currentType);
                 updateTimeButton();
                 locationButton.setText(locationName == null ? getString(R.string.action_pick_location) : locationName);
+                existingRecord.notesMarkdown = ImageStorage.copyMarkdownImages(
+                        RecordEditActivity.this,
+                        existingRecord.notesMarkdown
+                );
                 notesEditText.setText(existingRecord.notesMarkdown);
                 transferFromPersonEditText.setText(existingRecord.transferFromPerson);
                 transferToPersonEditText.setText(existingRecord.transferToPerson);
@@ -237,7 +242,7 @@ public class RecordEditActivity extends AppCompatActivity {
                 fieldAdapter.setFields(fields);
                 imageUris.clear();
                 for (RecordImageEntity image : details.images) {
-                    imageUris.add(image.uri);
+                    imageUris.add(ImageStorage.copyToPrivateStorage(RecordEditActivity.this, image.uri));
                 }
                 renderImages();
                 updateTypeUi();
@@ -666,7 +671,7 @@ public class RecordEditActivity extends AppCompatActivity {
     }
 
     private void addImageUri(Uri uri) {
-        String text = uri.toString();
+        String text = ImageStorage.copyToPrivateStorage(this, uri.toString());
         imageUris.add(text);
         String markdown = "\n![image](" + text + ")";
         notesEditText.append(markdown);
