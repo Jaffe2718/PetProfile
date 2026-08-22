@@ -442,7 +442,7 @@ public class MainActivity extends AppCompatActivity {
         if (draftKeeperInfo.hasHomePlace()) {
             homeButton.setText(draftKeeperInfo.homePlace);
         } else {
-            homeButton.setText(R.string.label_home_place);
+            homeButton.setText("");
         }
     }
 

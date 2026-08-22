@@ -4,8 +4,14 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,6 +41,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Set;
+import java.util.HashMap;
 
 public class RecordListActivity extends AppCompatActivity {
     public static final String EXTRA_PROFILE_ID = "profile_id";
@@ -45,6 +55,19 @@ public class RecordListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private TextView emptyTextView;
     private LanTransferServer activeTransferServer;
+
+    private View searchBar;
+    private EditText searchEditText;
+    private ImageButton filterButton;
+    private float searchBarCollapsedOffset;
+    private int searchBarHeight = -1;
+    private float lastTouchY;
+    private boolean touchActive;
+
+    private List<RecordEntity> allRecords = new ArrayList<>();
+    private Map<String, List<String>> imagesByRecord = new HashMap<>();
+    private Map<String, List<RecordFieldEntity>> fieldsByRecord = new HashMap<>();
+    private RecordFilterDialog.FilterState activeFilter = new RecordFilterDialog.FilterState();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +87,9 @@ public class RecordListActivity extends AppCompatActivity {
 
         recyclerView = findViewById(R.id.recordRecyclerView);
         emptyTextView = findViewById(R.id.emptyTextView);
+        searchBar = findViewById(R.id.recordSearchBar);
+        searchEditText = findViewById(R.id.recordSearchEditText);
+        filterButton = findViewById(R.id.recordFilterButton);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new RecordAdapter(new RecordAdapter.Listener() {
             @Override
@@ -80,6 +106,38 @@ public class RecordListActivity extends AppCompatActivity {
             }
         });
         recyclerView.setAdapter(adapter);
+        recyclerView.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
+            @Override
+            public boolean onInterceptTouchEvent(RecyclerView recyclerView, android.view.MotionEvent event) {
+                handleSearchBarTouch(event);
+                return false;
+            }
+
+            @Override
+            public void onTouchEvent(RecyclerView recyclerView, android.view.MotionEvent event) {
+            }
+
+            @Override
+            public void onRequestDisallowInterceptTouchEvent(boolean disallowIntercept) {
+            }
+        });
+
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                applyFilter();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+
+        filterButton.setOnClickListener(v -> showFilterDialog());
 
         FloatingActionButton addRecordFab = findViewById(R.id.addRecordFab);
         addRecordFab.setOnClickListener(v -> {
@@ -99,21 +157,35 @@ public class RecordListActivity extends AppCompatActivity {
         repository.getRecords(profileId, new Async.Result<List<RecordEntity>>() {
             @Override
             public void onSuccess(List<RecordEntity> value) {
+                allRecords = value == null ? new ArrayList<>() : value;
                 List<String> recordIds = new ArrayList<>();
-                for (RecordEntity record : value) {
+                for (RecordEntity record : allRecords) {
                     recordIds.add(record.id);
                 }
                 repository.getRecordImages(recordIds, new Async.Result<Map<String, List<String>>>() {
                     @Override
                     public void onSuccess(Map<String, List<String>> imageMap) {
-                        adapter.setItems(value, imageMap);
-                        emptyTextView.setVisibility(value.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE);
+                        imagesByRecord = imageMap == null ? new HashMap<>() : imageMap;
+                        repository.getRecordFields(recordIds, new Async.Result<Map<String, List<RecordFieldEntity>>>() {
+                            @Override
+                            public void onSuccess(Map<String, List<RecordFieldEntity>> fieldMap) {
+                                fieldsByRecord = fieldMap == null ? new HashMap<>() : fieldMap;
+                                applyFilter();
+                            }
+
+                            @Override
+                            public void onError(Throwable error) {
+                                fieldsByRecord = new HashMap<>();
+                                applyFilter();
+                            }
+                        });
                     }
 
                     @Override
                     public void onError(Throwable error) {
-                        adapter.setItems(value, null);
-                        emptyTextView.setVisibility(value.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE);
+                        imagesByRecord = new HashMap<>();
+                        fieldsByRecord = new HashMap<>();
+                        applyFilter();
                     }
                 });
             }
@@ -123,6 +195,105 @@ public class RecordListActivity extends AppCompatActivity {
                 Toast.makeText(RecordListActivity.this, error.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void showFilterDialog() {
+        RecordFilterDialog.show(this, collectFieldNames(fieldsByRecord), activeFilter, state -> {
+            activeFilter = state;
+            applyFilter();
+        });
+    }
+
+    private List<String> collectFieldNames(Map<String, List<RecordFieldEntity>> fieldMap) {
+        Set<String> names = new LinkedHashSet<>();
+        for (Map.Entry<String, List<RecordFieldEntity>> entry : fieldMap.entrySet()) {
+            for (RecordFieldEntity field : entry.getValue()) {
+                if (field.fieldName != null && !field.fieldName.trim().isEmpty()) {
+                    names.add(field.fieldName.trim());
+                } else if (field.fieldKey != null && !field.fieldKey.trim().isEmpty()) {
+                    names.add(field.fieldKey.trim());
+                }
+            }
+        }
+        return new ArrayList<>(names);
+    }
+
+    private void applyFilter() {
+        String query = searchEditText == null
+                ? ""
+                : searchEditText.getText().toString().trim().toLowerCase(Locale.getDefault());
+        List<RecordEntity> result = new ArrayList<>();
+        for (RecordEntity record : allRecords) {
+            if (!matchesSearch(record, query)) {
+                continue;
+            }
+            if (!activeFilter.matches(record, fieldsByRecord)) {
+                continue;
+            }
+            result.add(record);
+        }
+        adapter.setItems(result, imagesByRecord);
+        emptyTextView.setVisibility(result.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private boolean matchesSearch(RecordEntity record, String query) {
+        if (query.isEmpty()) {
+            return true;
+        }
+        if (containsIgnoreCase(record.title, query)
+                || containsIgnoreCase(record.locationName, query)
+                || containsIgnoreCase(record.transferFromPerson, query)
+                || containsIgnoreCase(record.transferToPerson, query)
+                || containsIgnoreCase(record.notesMarkdown, query)) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean containsIgnoreCase(String value, String query) {
+        return value != null && value.toLowerCase(Locale.getDefault()).contains(query);
+    }
+
+    private void applySearchBarScroll(float dy) {
+        if (searchBar == null) {
+            return;
+        }
+        if (searchBarHeight <= 0) {
+            searchBarHeight = searchBar.getHeight();
+        }
+        if (searchBarHeight <= 0) {
+            return;
+        }
+        searchBarCollapsedOffset += dy;
+        searchBarCollapsedOffset = Math.max(0f, Math.min(searchBarHeight, searchBarCollapsedOffset));
+        int newHeight = Math.max(0, Math.round(searchBarHeight - searchBarCollapsedOffset));
+        ViewGroup.LayoutParams params = searchBar.getLayoutParams();
+        if (params.height != newHeight) {
+            params.height = newHeight;
+            searchBar.setLayoutParams(params);
+        }
+    }
+
+    private void handleSearchBarTouch(android.view.MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case android.view.MotionEvent.ACTION_DOWN:
+                lastTouchY = event.getRawY();
+                touchActive = true;
+                break;
+            case android.view.MotionEvent.ACTION_MOVE:
+                if (touchActive) {
+                    float delta = lastTouchY - event.getRawY();
+                    lastTouchY = event.getRawY();
+                    applySearchBarScroll(delta);
+                }
+                break;
+            case android.view.MotionEvent.ACTION_UP:
+            case android.view.MotionEvent.ACTION_CANCEL:
+                touchActive = false;
+                break;
+            default:
+                break;
+        }
     }
 
     private void confirmDelete(RecordEntity record) {

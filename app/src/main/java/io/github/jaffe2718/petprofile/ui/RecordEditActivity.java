@@ -10,7 +10,7 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
@@ -22,7 +22,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bumptech.glide.Glide;
 import com.google.android.material.appbar.MaterialToolbar;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.FieldType;
@@ -81,7 +80,7 @@ public class RecordEditActivity extends AppCompatActivity {
     private String transferFromPlaceText = "";
     private String transferToPlaceText = "";
     private EditText notesEditText;
-    private LinearLayout imagesContainer;
+    private MarkdownImageStrip imagesContainer;
     private boolean recordLoaded;
     private EditText titleEditText;
     private boolean recordIsLatest;
@@ -108,6 +107,7 @@ public class RecordEditActivity extends AppCompatActivity {
         setupFieldEditor();
         setupListeners();
         updateTimeButton();
+        updateLocationButton();
         updateTransferPlaceButtons();
         Button saveButton = findViewById(R.id.saveButton);
         recordLoaded = recordId == null;
@@ -197,6 +197,24 @@ public class RecordEditActivity extends AppCompatActivity {
         findViewById(R.id.addFieldButton).setOnClickListener(v ->
                 fieldAdapter.addField(new EditableField("", FieldType.NUMBER)));
         findViewById(R.id.addImageButton).setOnClickListener(v -> pickImages());
+        findViewById(R.id.manageImagesButton).setOnClickListener(v -> toggleImageDeleteMode());
+        imagesContainer.setListener(new MarkdownImageStrip.Listener() {
+            @Override
+            public void onInsertImage(String uri) {
+                insertImageMarkdownAtCursor(uri);
+            }
+
+            @Override
+            public void onDeleteRequest(int position, String uri) {
+                confirmDeleteImage(position, uri);
+            }
+
+            @Override
+            public void onOrderChanged(List<String> uris) {
+                imageUris.clear();
+                imageUris.addAll(uris);
+            }
+        });
         findViewById(R.id.saveButton).setOnClickListener(v -> save());
         archiveReasonRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             updateTypeUi();
@@ -217,7 +235,7 @@ public class RecordEditActivity extends AppCompatActivity {
                 longitude = existingRecord.longitude;
                 selectTypeRadio(currentType);
                 updateTimeButton();
-                locationButton.setText(locationName == null ? getString(R.string.action_pick_location) : locationName);
+                updateLocationButton();
                 existingRecord.notesMarkdown = ImageStorage.copyMarkdownImages(
                         RecordEditActivity.this,
                         existingRecord.notesMarkdown
@@ -244,7 +262,7 @@ public class RecordEditActivity extends AppCompatActivity {
                 for (RecordImageEntity image : details.images) {
                     imageUris.add(ImageStorage.copyToPrivateStorage(RecordEditActivity.this, image.uri));
                 }
-                renderImages();
+                refreshImageStrip();
                 updateTypeUi();
                 determineRecordPositionAndApplyAvailability();
                 recordLoaded = true;
@@ -428,6 +446,17 @@ public class RecordEditActivity extends AppCompatActivity {
         timeButton.setText(format.format(new Date(timestamp)));
     }
 
+    private void updateLocationButton() {
+        if (latitude != null && longitude != null) {
+            String name = locationName == null ? "" : locationName;
+            String dms = LocationHelper.formatDms(latitude, true)
+                    + ", " + LocationHelper.formatDms(longitude, false);
+            locationButton.setText((name.isEmpty() ? "" : name + " ") + dms);
+        } else {
+            locationButton.setText("");
+        }
+    }
+
     private void pickLocation() {
         double[] coords = LocationHelper.lastKnownCoordinates(this);
         double initialLatitude = coords == null ? 35.0 : coords[0];
@@ -451,10 +480,8 @@ public class RecordEditActivity extends AppCompatActivity {
     }
 
     private void updateTransferPlaceButtons() {
-        transferFromPlaceButton.setText(getString(R.string.label_transfer_from_place)
-                + ": " + transferFromPlaceText);
-        transferToPlaceButton.setText(getString(R.string.label_transfer_to_place)
-                + ": " + transferToPlaceText);
+        transferFromPlaceButton.setText(transferFromPlaceText);
+        transferToPlaceButton.setText(transferToPlaceText);
     }
 
     private void pickImages() {
@@ -466,25 +493,48 @@ public class RecordEditActivity extends AppCompatActivity {
         startActivityForResult(intent, REQUEST_IMAGES);
     }
 
-    private void renderImages() {
-        imagesContainer.removeAllViews();
-        for (int i = 0; i < imageUris.size(); i++) {
-            String uri = imageUris.get(i);
-            ImageView image = new ImageView(this);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    120,
-                    120
-            );
-            params.setMargins(0, 0, 12, 0);
-            image.setLayoutParams(params);
-            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            Glide.with(this).load(uri).into(image);
-            final int index = i;
-            image.setOnClickListener(v -> {
-                imageUris.remove(index);
-                renderImages();
-            });
-            imagesContainer.addView(image);
+    private void refreshImageStrip() {
+        imagesContainer.setImages(imageUris);
+    }
+
+    private void toggleImageDeleteMode() {
+        boolean enabled = !imagesContainer.isDeleteMode();
+        imagesContainer.setDeleteMode(enabled);
+        ImageButton manageButton = findViewById(R.id.manageImagesButton);
+        manageButton.setImageResource(enabled ? R.drawable.ic_done : R.drawable.ic_trash);
+        manageButton.setContentDescription(getString(enabled ? R.string.action_done : R.string.action_manage_images));
+    }
+
+    private void insertImageMarkdownAtCursor(String uri) {
+        EditText editText = notesEditText;
+        String markdown = "![image](" + uri + ")";
+        int start = Math.max(0, editText.getSelectionStart());
+        String text = editText.getText().toString();
+        String updated = text.substring(0, start) + markdown + text.substring(start);
+        editText.setText(updated);
+        editText.setSelection(start + markdown.length());
+    }
+
+    private void confirmDeleteImage(int position, String uri) {
+        new AlertDialog.Builder(this)
+                .setMessage(R.string.confirm_delete_image)
+                .setPositiveButton(R.string.action_delete, (dialog, which) -> {
+                    if (position >= 0 && position < imageUris.size()) {
+                        imageUris.remove(position);
+                    }
+                    removeMarkdownImage(uri);
+                    refreshImageStrip();
+                })
+                .setNegativeButton(R.string.action_cancel, null)
+                .show();
+    }
+
+    private void removeMarkdownImage(String uri) {
+        String reference = "![image](" + uri + ")";
+        android.text.Editable editable = notesEditText.getText();
+        int index = editable.toString().indexOf(reference);
+        if (index >= 0) {
+            editable.replace(index, index + reference.length(), "");
         }
     }
 
@@ -615,7 +665,7 @@ public class RecordEditActivity extends AppCompatActivity {
                 persistImagePermission(data.getData());
                 addImageUri(data.getData());
             }
-            renderImages();
+            refreshImageStrip();
         } else if (requestCode == REQUEST_MAP_PICK && resultCode == RESULT_OK && data != null) {
             final double pickedLatitude = data.getDoubleExtra(MapPickerActivity.EXTRA_RESULT_LATITUDE, 0.0);
             final double pickedLongitude = data.getDoubleExtra(MapPickerActivity.EXTRA_RESULT_LONGITUDE, 0.0);
@@ -625,14 +675,14 @@ public class RecordEditActivity extends AppCompatActivity {
                 @Override
                 public void onResult(LocationHelper.LocationResult result) {
                     locationName = result.name;
-                    locationButton.setText(result.name);
+                    updateLocationButton();
                 }
 
                 @Override
                 public void onError(String message) {
                     locationName = LocationHelper.formatDms(pickedLatitude, true)
                             + ", " + LocationHelper.formatDms(pickedLongitude, false);
-                    locationButton.setText(locationName);
+                    updateLocationButton();
                 }
             });
         } else if ((requestCode == REQUEST_TRANSFER_FROM_MAP

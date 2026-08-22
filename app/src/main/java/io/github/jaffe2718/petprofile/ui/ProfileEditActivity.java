@@ -11,6 +11,7 @@ import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
@@ -101,6 +102,7 @@ public class ProfileEditActivity extends AppCompatActivity {
     private EditText establishmentNotesEditText;
     private EditText establishmentTitleEditText;
     private EditText establishmentKeeperEditText;
+    private MarkdownImageStrip establishmentImagesContainer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -159,6 +161,7 @@ public class ProfileEditActivity extends AppCompatActivity {
         establishmentNotesEditText = findViewById(R.id.establishmentNotesEditText);
         establishmentTitleEditText = findViewById(R.id.establishmentTitleEditText);
         establishmentKeeperEditText = findViewById(R.id.establishmentKeeperEditText);
+        establishmentImagesContainer = findViewById(R.id.establishmentImagesContainer);
     }
 
     private void setupSpinners() {
@@ -192,6 +195,24 @@ public class ProfileEditActivity extends AppCompatActivity {
         findViewById(R.id.addEstablishmentFieldButton).setOnClickListener(v ->
                 establishmentFieldAdapter.addField(new EditableField("", FieldType.NUMBER)));
         findViewById(R.id.establishmentImageButton).setOnClickListener(v -> pickEstablishmentImages());
+        findViewById(R.id.manageImagesButton).setOnClickListener(v -> toggleEstablishmentImageDeleteMode());
+        establishmentImagesContainer.setListener(new MarkdownImageStrip.Listener() {
+            @Override
+            public void onInsertImage(String uri) {
+                insertEstablishmentImageMarkdownAtCursor(uri);
+            }
+
+            @Override
+            public void onDeleteRequest(int position, String uri) {
+                confirmDeleteEstablishmentImage(position, uri);
+            }
+
+            @Override
+            public void onOrderChanged(List<String> uris) {
+                establishmentImageUris.clear();
+                establishmentImageUris.addAll(uris);
+            }
+        });
         findViewById(R.id.saveButton).setOnClickListener(v -> save());
     }
 
@@ -333,6 +354,52 @@ public class ProfileEditActivity extends AppCompatActivity {
         String text = ImageStorage.copyToPrivateStorage(this, uri.toString());
         establishmentImageUris.add(text);
         establishmentNotesEditText.append("\n![image](" + text + ")");
+        refreshEstablishmentImages();
+    }
+
+    private void refreshEstablishmentImages() {
+        establishmentImagesContainer.setImages(establishmentImageUris);
+    }
+
+    private void toggleEstablishmentImageDeleteMode() {
+        boolean enabled = !establishmentImagesContainer.isDeleteMode();
+        establishmentImagesContainer.setDeleteMode(enabled);
+        ImageButton manageButton = findViewById(R.id.manageImagesButton);
+        manageButton.setImageResource(enabled ? R.drawable.ic_done : R.drawable.ic_trash);
+        manageButton.setContentDescription(getString(enabled ? R.string.action_done : R.string.action_manage_images));
+    }
+
+    private void insertEstablishmentImageMarkdownAtCursor(String uri) {
+        EditText editText = establishmentNotesEditText;
+        String markdown = "![image](" + uri + ")";
+        int start = Math.max(0, editText.getSelectionStart());
+        String text = editText.getText().toString();
+        String updated = text.substring(0, start) + markdown + text.substring(start);
+        editText.setText(updated);
+        editText.setSelection(start + markdown.length());
+    }
+
+    private void confirmDeleteEstablishmentImage(int position, String uri) {
+        new AlertDialog.Builder(this)
+                .setMessage(R.string.confirm_delete_image)
+                .setPositiveButton(R.string.action_delete, (dialog, which) -> {
+                    if (position >= 0 && position < establishmentImageUris.size()) {
+                        establishmentImageUris.remove(position);
+                    }
+                    removeEstablishmentMarkdownImage(uri);
+                    refreshEstablishmentImages();
+                })
+                .setNegativeButton(R.string.action_cancel, null)
+                .show();
+    }
+
+    private void removeEstablishmentMarkdownImage(String uri) {
+        String reference = "![image](" + uri + ")";
+        android.text.Editable editable = establishmentNotesEditText.getText();
+        int index = editable.toString().indexOf(reference);
+        if (index >= 0) {
+            editable.replace(index, index + reference.length(), "");
+        }
     }
 
     private void persistImagePermission(Uri uri) {
@@ -724,6 +791,8 @@ public class ProfileEditActivity extends AppCompatActivity {
         findViewById(R.id.establishmentFieldsRecyclerView).setVisibility(visibility);
         findViewById(R.id.addEstablishmentFieldButton).setVisibility(visibility);
         findViewById(R.id.establishmentImageButton).setVisibility(visibility);
+        findViewById(R.id.manageImagesButton).setVisibility(visibility);
+        establishmentImagesContainer.setVisibility(visibility);
         establishmentNotesEditText.setVisibility(visibility);
         View notesParent = (View) establishmentNotesEditText.getParent();
         if (notesParent != null) {

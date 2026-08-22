@@ -1,21 +1,23 @@
 package io.github.jaffe2718.petprofile.ui;
 
 import android.content.Context;
+import android.app.DatePickerDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.Spinner;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ProfileDetails;
@@ -34,7 +36,8 @@ public final class ProfileFilterDialog {
     }
 
     public static class FilterState {
-        public Integer year;
+        public Long startDate;
+        public Long endDate;
         public String gender = ALL;
         public String status = ALL;
         public String kingdom;
@@ -48,7 +51,8 @@ public final class ProfileFilterDialog {
 
         public FilterState copy() {
             FilterState state = new FilterState();
-            state.year = year;
+            state.startDate = startDate;
+            state.endDate = endDate;
             state.gender = gender;
             state.status = status;
             state.kingdom = kingdom;
@@ -67,15 +71,14 @@ public final class ProfileFilterDialog {
                 return false;
             }
             ProfileEntity profile = details.profile;
-            if (year != null) {
-                Calendar calendar = Calendar.getInstance();
-                long displayTime = details.establishmentTimestamp != null
-                        ? details.establishmentTimestamp
-                        : profile.createdAt;
-                calendar.setTimeInMillis(displayTime);
-                if (calendar.get(Calendar.YEAR) != year) {
-                    return false;
-                }
+            long displayTime = details.establishmentTimestamp != null
+                    ? details.establishmentTimestamp
+                    : profile.createdAt;
+            if (startDate != null && displayTime < startDate) {
+                return false;
+            }
+            if (endDate != null && displayTime > endDate) {
+                return false;
             }
             if (!ALL.equals(gender) && !gender.equalsIgnoreCase(profile.gender)) {
                 return false;
@@ -126,25 +129,33 @@ public final class ProfileFilterDialog {
                             FilterState current, Callback callback) {
         FilterState working = current == null ? new FilterState() : current.copy();
         View view = LayoutInflater.from(context).inflate(R.layout.dialog_profile_filter, null, false);
-        Spinner yearSpinner = view.findViewById(R.id.filterYearSpinner);
         Spinner genderSpinner = view.findViewById(R.id.filterGenderSpinner);
         Spinner statusSpinner = view.findViewById(R.id.filterStatusSpinner);
         Button taxonomyButton = view.findViewById(R.id.filterTaxonomyButton);
+        Button startButton = view.findViewById(R.id.filterStartDateButton);
+        Button endButton = view.findViewById(R.id.filterEndDateButton);
+        ImageButton clearStartButton = view.findViewById(R.id.clearStartDateButton);
+        ImageButton clearEndButton = view.findViewById(R.id.clearEndDateButton);
 
-        populateYearSpinner(context, allDetails, yearSpinner, working.year);
+        updateDateButton(context, startButton, working.startDate);
+        updateDateButton(context, endButton, working.endDate);
         populateGenderSpinner(context, genderSpinner, working.gender);
         populateStatusSpinner(context, statusSpinner, working.status);
         updateTaxonomyButton(context, taxonomyButton, working);
 
-        yearSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                working.year = position == 0 ? null : (Integer) parent.getItemAtPosition(position);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
+        startButton.setOnClickListener(v -> pickDate(context, working, true, () -> {
+            updateDateButton(context, startButton, working.startDate);
+        }));
+        endButton.setOnClickListener(v -> pickDate(context, working, false, () -> {
+            updateDateButton(context, endButton, working.endDate);
+        }));
+        clearStartButton.setOnClickListener(v -> {
+            working.startDate = null;
+            updateDateButton(context, startButton, working.startDate);
+        });
+        clearEndButton.setOnClickListener(v -> {
+            working.endDate = null;
+            updateDateButton(context, endButton, working.endDate);
         });
         genderSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -181,33 +192,47 @@ public final class ProfileFilterDialog {
                 .show();
     }
 
-    private static void populateYearSpinner(Context context, List<ProfileDetails> allDetails,
-                                            Spinner spinner, Integer selectedYear) {
-        Set<Integer> years = new TreeSet<>((a, b) -> Integer.compare(b, a));
-        for (ProfileDetails details : allDetails) {
-            Calendar calendar = Calendar.getInstance();
-            long displayTime = details.establishmentTimestamp != null
-                    ? details.establishmentTimestamp
-                    : details.profile.createdAt;
-            calendar.setTimeInMillis(displayTime);
-            years.add(calendar.get(Calendar.YEAR));
+    private static void updateDateButton(Context context, Button button, Long date) {
+        MaterialButton materialButton = (MaterialButton) button;
+        materialButton.setIconResource(R.drawable.ic_calendar);
+        if (date == null) {
+            materialButton.setText("");
+        } else {
+            materialButton.setText(new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                    .format(new java.util.Date(date)));
         }
-        List<Object> values = new ArrayList<>();
-        values.add(context.getString(R.string.label_all));
-        values.addAll(years);
-        ArrayAdapter<Object> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, values);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        int index = 0;
-        if (selectedYear != null) {
-            for (int i = 1; i < values.size(); i++) {
-                if (Integer.valueOf(values.get(i).toString()).equals(selectedYear)) {
-                    index = i;
-                    break;
-                }
-            }
+    }
+
+    private static void pickDate(Context context, FilterState state, boolean start, Runnable after) {
+        Calendar calendar = Calendar.getInstance();
+        Long value = start ? state.startDate : state.endDate;
+        if (value != null) {
+            calendar.setTimeInMillis(value);
         }
-        spinner.setSelection(index);
+        new DatePickerDialog(
+                context,
+                (view, year, month, day) -> {
+                    Calendar picked = Calendar.getInstance();
+                    picked.set(year, month, day);
+                    if (start) {
+                        picked.set(Calendar.HOUR_OF_DAY, 0);
+                        picked.set(Calendar.MINUTE, 0);
+                        picked.set(Calendar.SECOND, 0);
+                        picked.set(Calendar.MILLISECOND, 0);
+                        state.startDate = picked.getTimeInMillis();
+                    } else {
+                        picked.set(Calendar.HOUR_OF_DAY, 23);
+                        picked.set(Calendar.MINUTE, 59);
+                        picked.set(Calendar.SECOND, 59);
+                        picked.set(Calendar.MILLISECOND, 999);
+                        state.endDate = picked.getTimeInMillis();
+                    }
+                    after.run();
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+        ).show();
     }
 
     private static void populateGenderSpinner(Context context, Spinner spinner, String selectedGender) {
