@@ -6,6 +6,7 @@ import io.github.jaffe2718.petprofile.data.entity.ProfileParentCrossRef;
 import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
+import io.github.jaffe2718.petprofile.data.entity.RoutineEntity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,4 +21,5 @@ public class ExportBundle {
     public List<RecordEntity> records = new ArrayList<>();
     public List<RecordFieldEntity> recordFields = new ArrayList<>();
     public List<RecordImageEntity> recordImages = new ArrayList<>();
+    public List<RoutineEntity> routines = new ArrayList<>();
 }

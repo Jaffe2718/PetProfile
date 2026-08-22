@@ -24,6 +24,7 @@ import io.github.jaffe2718.petprofile.data.entity.ProfileParentCrossRef;
 import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
+import io.github.jaffe2718.petprofile.data.entity.RoutineEntity;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.ImageStorage;
 import io.github.jaffe2718.petprofile.util.IdUtil;
@@ -127,6 +128,7 @@ public class PetRepository {
                 if (!details.parentIds.isEmpty()) {
                     details.parents.addAll(dao.getByIds(details.parentIds));
                 }
+                details.routineWork.addAll(database.routineDao().getRoutinesForProfile(profileId));
                 Async.post(callback, details, null);
             } catch (Throwable t) {
                 Async.post(callback, null, t);
@@ -249,6 +251,7 @@ public class PetRepository {
             RecordEntity establishment,
             List<RecordFieldEntity> establishmentFields,
             List<RecordImageEntity> establishmentImages,
+            List<RoutineEntity> routines,
             Async.Result<String> callback
     ) {
         Async.run(() -> {
@@ -280,6 +283,7 @@ public class PetRepository {
                     recordDao.insertRecord(establishment);
                     replaceRecordFields(recordDao, establishment.id, establishmentFields);
                     replaceRecordImages(recordDao, establishment.id, establishmentImages);
+                    replaceRoutines(database.routineDao(), profile.id, routines);
                 });
                 Async.post(callback, profile.id, null);
             } catch (Throwable t) {
@@ -293,6 +297,7 @@ public class PetRepository {
             List<ProfileCustomFieldEntity> customFields,
             String fatherId,
             String motherId,
+            List<RoutineEntity> routines,
             Async.Result<String> callback
     ) {
         Async.run(() -> {
@@ -309,6 +314,7 @@ public class PetRepository {
                     applyGenderRelationCleanup(profileDao, profile.id, previous == null ? null : previous.gender, profile.gender);
                     replaceCustomFields(profileDao, profile.id, customFields);
                     replaceParents(profileDao, profile.id, fatherId, motherId);
+                    replaceRoutines(database.routineDao(), profile.id, routines);
                 });
                 Async.post(callback, profile.id, null);
             } catch (Throwable t) {
@@ -591,6 +597,13 @@ public class PetRepository {
                     if (!bundle.recordImages.isEmpty()) {
                         recordDao.insertImages(bundle.recordImages);
                     }
+                    for (RoutineEntity routine : bundle.routines) {
+                        routine.id = IdUtil.normalizeId(routine.id);
+                        routine.profileId = IdUtil.normalizeId(routine.profileId);
+                    }
+                    if (!bundle.routines.isEmpty()) {
+                        database.routineDao().insertAll(bundle.routines);
+                    }
                     for (String profileId : profileIds) {
                         syncArchiveStatus(profileDao, recordDao, profileId);
                     }
@@ -737,11 +750,13 @@ public class PetRepository {
         }
         ProfileDao profileDao = database.profileDao();
         RecordDao recordDao = database.recordDao();
+        io.github.jaffe2718.petprofile.data.dao.RoutineDao routineDao = database.routineDao();
         List<String> ids = new ArrayList<>(profileIds);
         bundle.profiles.addAll(profileDao.getByIds(ids));
         for (ProfileEntity profile : bundle.profiles) {
             bundle.customFields.addAll(profileDao.getCustomFields(profile.id));
             bundle.parentLinks.addAll(profileDao.getParentLinks(profile.id));
+            bundle.routines.addAll(routineDao.getRoutinesForProfile(profile.id));
             List<RecordEntity> records = recordDao.getRecordsForProfileOldestFirst(profile.id);
             bundle.records.addAll(records);
             List<String> recordIds = new ArrayList<>();
@@ -904,6 +919,30 @@ public class PetRepository {
         }
         if (!normalized.isEmpty()) {
             dao.insertCustomFields(normalized);
+        }
+    }
+
+    private void replaceRoutines(io.github.jaffe2718.petprofile.data.dao.RoutineDao dao,
+                                 String profileId, List<RoutineEntity> routines) {
+        dao.deleteForProfile(profileId);
+        if (routines == null || routines.isEmpty()) {
+            return;
+        }
+        List<RoutineEntity> normalized = new ArrayList<>();
+        int position = 0;
+        for (RoutineEntity routine : routines) {
+            if (routine == null) {
+                continue;
+            }
+            if (routine.id == null || routine.id.trim().isEmpty()) {
+                routine.id = IdUtil.randomId();
+            }
+            routine.profileId = profileId;
+            routine.position = position++;
+            normalized.add(routine);
+        }
+        if (!normalized.isEmpty()) {
+            dao.insertAll(normalized);
         }
     }
 

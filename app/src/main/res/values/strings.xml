@@ -12,6 +12,7 @@
     <string name="action_import_zip">导入 ZIP</string>
     <string name="action_add_record">添加记录</string>
     <string name="action_add_field">新增字段</string>
+    <string name="action_add_routine">新增日常提醒</string>
     <string name="action_pick_avatar">选择头像</string>
     <string name="action_pick_image">添加图片</string>
     <string name="action_manage_images">管理图片</string>
@@ -58,6 +59,15 @@
     <string name="label_taxonomy_section">生物分类</string>
     <string name="label_records">饲养记录</string>
     <string name="label_attributes">属性</string>
+    <string name="label_routine">日常提醒</string>
+    <string name="label_details">详情</string>
+    <string name="routine_once">一次性</string>
+    <string name="routine_weekly">一周多次</string>
+    <string name="routine_choose_time">选择时间</string>
+    <string name="autostart_title">开启后台运行权限</string>
+    <string name="autostart_message">为了让日常提醒在后台、锁屏时也能准时推送，请在系统设置中允许本应用「自启动」和「后台运行」。</string>
+    <string name="autostart_grant">去开启</string>
+    <string name="autostart_later">稍后</string>
     <string name="label_profile_attributes">档案属性</string>
     <string name="label_record_attributes">建档记录属性</string>
     <string name="label_field_name">字段名</string>

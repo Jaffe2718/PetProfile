@@ -34,11 +34,13 @@ import io.github.jaffe2718.petprofile.data.entity.ProfileEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
+import io.github.jaffe2718.petprofile.data.entity.RoutineEntity;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.ImageStorage;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
+import io.github.jaffe2718.petprofile.util.RoutineScheduler;
 import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
 
 import java.text.SimpleDateFormat;
@@ -74,6 +76,7 @@ public class ProfileEditActivity extends AppCompatActivity {
     private String motherId;
     private FieldEditorAdapter fieldAdapter;
     private FieldEditorAdapter establishmentFieldAdapter;
+    private RoutineAdapter routineAdapter;
     private long establishmentTimestamp = System.currentTimeMillis();
     private String establishmentLocationName;
     private Double establishmentLatitude;
@@ -180,6 +183,13 @@ public class ProfileEditActivity extends AppCompatActivity {
         establishmentFieldAdapter = new FieldEditorAdapter(FieldEditorAdapter.MODE_RECORD, position -> {
         });
         establishmentRecyclerView.setAdapter(establishmentFieldAdapter);
+
+        RecyclerView routineRecyclerView = findViewById(R.id.routineRecyclerView);
+        routineRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        routineAdapter = new RoutineAdapter(routine -> {
+            routineAdapter.remove(routine);
+        });
+        routineRecyclerView.setAdapter(routineAdapter);
     }
 
     private void setupButtons() {
@@ -196,6 +206,7 @@ public class ProfileEditActivity extends AppCompatActivity {
                 establishmentFieldAdapter.addField(new EditableField("", FieldType.NUMBER)));
         findViewById(R.id.establishmentImageButton).setOnClickListener(v -> pickEstablishmentImages());
         findViewById(R.id.manageImagesButton).setOnClickListener(v -> toggleEstablishmentImageDeleteMode());
+        findViewById(R.id.addRoutineButton).setOnClickListener(v -> routineAdapter.addRoutine());
         establishmentImagesContainer.setListener(new MarkdownImageStrip.Listener() {
             @Override
             public void onInsertImage(String uri) {
@@ -308,6 +319,7 @@ public class ProfileEditActivity extends AppCompatActivity {
                 fatherId = details.fatherId;
                 motherId = details.motherId;
                 fieldAdapter.setFields(fields);
+                routineAdapter.setItems(details.routineWork);
                 updateParentSelections();
                 showAvatar();
                 profileLoaded = true;
@@ -586,6 +598,7 @@ public class ProfileEditActivity extends AppCompatActivity {
         List<ProfileCustomFieldEntity> customFields = buildCustomFields();
         if (customFields == null) return;
         customFields.add(0, buildNicknameField(nickname));
+        List<RoutineEntity> routines = routineAdapter.getItems();
 
         ProfileEntity profile = existingProfile == null ? new ProfileEntity() : existingProfile;
         profile.kingdom = text(kingdomEditText);
@@ -632,10 +645,12 @@ public class ProfileEditActivity extends AppCompatActivity {
                     establishment,
                     establishmentFields,
                     buildEstablishmentImages(),
+                    routines,
                     new Async.Result<String>() {
                         @Override
                         public void onSuccess(String value) {
                             Toast.makeText(ProfileEditActivity.this, R.string.saved, Toast.LENGTH_SHORT).show();
+                            RoutineScheduler.scheduleAll(ProfileEditActivity.this);
                             finish();
                         }
 
@@ -646,10 +661,11 @@ public class ProfileEditActivity extends AppCompatActivity {
                     }
             );
         } else {
-            repository.updateProfile(profile, customFields, fatherId, motherId, new Async.Result<String>() {
+            repository.updateProfile(profile, customFields, fatherId, motherId, routines, new Async.Result<String>() {
                 @Override
                 public void onSuccess(String value) {
                     Toast.makeText(ProfileEditActivity.this, R.string.saved, Toast.LENGTH_SHORT).show();
+                    RoutineScheduler.scheduleAll(ProfileEditActivity.this);
                     finish();
                 }
 

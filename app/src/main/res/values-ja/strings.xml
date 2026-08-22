@@ -12,6 +12,7 @@
     <string name="action_import_zip">ZIP から読込</string>
     <string name="action_add_record">記録を追加</string>
     <string name="action_add_field">項目を追加</string>
+    <string name="action_add_routine">日常のリマインダーを追加</string>
     <string name="action_pick_avatar">画像を選択</string>
     <string name="action_pick_image">画像を追加</string>
     <string name="action_manage_images">画像を管理</string>
@@ -58,6 +59,15 @@
     <string name="label_taxonomy_section">生物分類</string>
     <string name="label_records">飼育記録</string>
     <string name="label_attributes">属性</string>
+    <string name="label_routine">日常のリマインダー</string>
+    <string name="label_details">詳細</string>
+    <string name="routine_once">一回だけ</string>
+    <string name="routine_weekly">毎週複数回</string>
+    <string name="routine_choose_time">時刻を選択</string>
+    <string name="autostart_title">バックグラウンド実行を許可</string>
+    <string name="autostart_message">日常リマインダーをバックグラウンドやロック画面でも確実にお届けするため、システム設定で本アプリの自動起動とバックグラウンド実行を許可してください。</string>
+    <string name="autostart_grant">設定を開く</string>
+    <string name="autostart_later">後で</string>
     <string name="label_profile_attributes">プロフィール属性</string>
     <string name="label_record_attributes">建立記録属性</string>
     <string name="label_field_name">項目名</string>

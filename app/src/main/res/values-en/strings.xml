@@ -12,6 +12,7 @@
     <string name="action_import_zip">Import ZIP</string>
     <string name="action_add_record">Add Record</string>
     <string name="action_add_field">Add Field</string>
+    <string name="action_add_routine">Add Routine</string>
     <string name="action_pick_avatar">Choose Avatar</string>
     <string name="action_pick_image">Add Image</string>
     <string name="action_manage_images">Manage Images</string>
@@ -58,6 +59,15 @@
     <string name="label_taxonomy_section">Taxonomy</string>
     <string name="label_records">Records</string>
     <string name="label_attributes">Attributes</string>
+    <string name="label_routine">Routine work</string>
+    <string name="label_details">Details</string>
+    <string name="routine_once">Once</string>
+    <string name="routine_weekly">Weekly</string>
+    <string name="routine_choose_time">Choose time</string>
+    <string name="autostart_title">Enable background running</string>
+    <string name="autostart_message">To deliver routine reminders reliably in the background and on the lock screen, allow this app to auto-start and run in the background in system settings.</string>
+    <string name="autostart_grant">Open settings</string>
+    <string name="autostart_later">Later</string>
     <string name="label_profile_attributes">Profile Attributes</string>
     <string name="label_record_attributes">Establishment Record Attributes</string>
     <string name="label_field_name">Field Name</string>

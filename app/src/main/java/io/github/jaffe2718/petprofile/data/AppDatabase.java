@@ -12,8 +12,10 @@ import io.github.jaffe2718.petprofile.data.entity.ProfileParentCrossRef;
 import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
+import io.github.jaffe2718.petprofile.data.entity.RoutineEntity;
 import io.github.jaffe2718.petprofile.data.dao.ProfileDao;
 import io.github.jaffe2718.petprofile.data.dao.RecordDao;
+import io.github.jaffe2718.petprofile.data.dao.RoutineDao;
 
 @Database(
         entities = {
@@ -22,9 +24,10 @@ import io.github.jaffe2718.petprofile.data.dao.RecordDao;
                 ProfileParentCrossRef.class,
                 RecordEntity.class,
                 RecordFieldEntity.class,
-                RecordImageEntity.class
+                RecordImageEntity.class,
+                RoutineEntity.class
         },
-        version = 5,
+        version = 6,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -37,9 +40,32 @@ public abstract class AppDatabase extends RoomDatabase {
 
     private static volatile AppDatabase instance;
 
+    private static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS routines ("
+                    + "id TEXT NOT NULL PRIMARY KEY, "
+                    + "profileId TEXT, "
+                    + "type TEXT NOT NULL, "
+                    + "enabled INTEGER NOT NULL DEFAULT 1, "
+                    + "title TEXT NOT NULL, "
+                    + "position INTEGER NOT NULL DEFAULT 0, "
+                    + "weekdays TEXT NOT NULL DEFAULT '', "
+                    + "hour INTEGER NOT NULL DEFAULT 0, "
+                    + "minute INTEGER NOT NULL DEFAULT 0, "
+                    + "second INTEGER NOT NULL DEFAULT 0, "
+                    + "onceAt INTEGER, "
+                    + "details TEXT NOT NULL DEFAULT '', "
+                    + "lastFiredAt INTEGER)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_routines_profileId ON routines(profileId)");
+        }
+    };
+
     public abstract ProfileDao profileDao();
 
     public abstract RecordDao recordDao();
+
+    public abstract RoutineDao routineDao();
 
     public static AppDatabase getInstance(android.content.Context context) {
         if (instance == null) {
@@ -50,7 +76,7 @@ public abstract class AppDatabase extends RoomDatabase {
                             AppDatabase.class,
                             "pet_profile.db"
                     )
-                    .addMigrations(MIGRATION_4_5)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration()
                             .build();
                 }

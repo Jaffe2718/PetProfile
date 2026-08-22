@@ -1,6 +1,8 @@
 package io.github.jaffe2718.petprofile.ui;
 
 import android.app.AlertDialog;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.app.ActivityCompat;
 import androidx.core.os.LocaleListCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -38,6 +41,8 @@ import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.BackupManager;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
+import io.github.jaffe2718.petprofile.util.OemPermissionHelper;
+import io.github.jaffe2718.petprofile.util.RoutineScheduler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -152,12 +157,43 @@ public class MainActivity extends AppCompatActivity {
         });
         updateSortButton();
         updateModeUi();
+        requestNotificationPermission();
+        maybePromptAutoStart();
+    }
+
+    private void maybePromptAutoStart() {
+        android.content.SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+        if (prefs.getBoolean("autostart_prompted", false)) {
+            return;
+        }
+        android.content.SharedPreferences.Editor markPrompted = prefs.edit()
+                .putBoolean("autostart_prompted", true);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.autostart_title)
+                .setMessage(R.string.autostart_message)
+                .setPositiveButton(R.string.autostart_grant, (d, w) -> {
+                    markPrompted.apply();
+                    OemPermissionHelper.openAutoStartSettings(this);
+                })
+                .setNegativeButton(R.string.autostart_later, (d, w) -> markPrompted.apply())
+                .setOnCancelListener(d -> markPrompted.apply())
+                .show();
+    }
+
+    private void requestNotificationPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1001);
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         reload();
+        RoutineScheduler.scheduleAll(this);
     }
 
     private void showFilterDialog() {
@@ -562,6 +598,7 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onSuccess() {
                             Toast.makeText(MainActivity.this, R.string.imported, Toast.LENGTH_SHORT).show();
+                            RoutineScheduler.scheduleAll(MainActivity.this);
                             reload();
                         }
 

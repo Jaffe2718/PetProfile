@@ -29,6 +29,7 @@ import io.github.jaffe2718.petprofile.util.BackupManager;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LanTransferClient;
 import io.github.jaffe2718.petprofile.util.QrCodeUtil;
+import io.github.jaffe2718.petprofile.util.RoutineScheduler;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -128,6 +129,7 @@ public class QrScannerActivity extends AppCompatActivity {
                     @Override
                     public void onSuccess() {
                         Toast.makeText(QrScannerActivity.this, R.string.imported, Toast.LENGTH_SHORT).show();
+                        RoutineScheduler.scheduleAll(QrScannerActivity.this);
                         finish();
                     }
 
@@ -156,6 +158,7 @@ public class QrScannerActivity extends AppCompatActivity {
                     @Override
                     public void onSuccess() {
                         Toast.makeText(QrScannerActivity.this, R.string.imported, Toast.LENGTH_SHORT).show();
+                        RoutineScheduler.scheduleAll(QrScannerActivity.this);
                         finish();
                     }
 
