@@ -1,6 +1,6 @@
 package io.github.jaffe2718.petprofile.ui;
 
-import android.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
@@ -516,7 +516,7 @@ public class RecordEditActivity extends AppCompatActivity {
     }
 
     private void confirmDeleteImage(int position, String uri) {
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setMessage(R.string.confirm_delete_image)
                 .setPositiveButton(R.string.action_delete, (dialog, which) -> {
                     if (position >= 0 && position < imageUris.size()) {

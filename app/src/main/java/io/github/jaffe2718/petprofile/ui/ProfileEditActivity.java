@@ -1,6 +1,6 @@
 package io.github.jaffe2718.petprofile.ui;
 
-import android.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
@@ -41,6 +41,7 @@ import io.github.jaffe2718.petprofile.util.ImageStorage;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 import io.github.jaffe2718.petprofile.util.RoutineScheduler;
+import io.github.jaffe2718.petprofile.util.RoutineNotifier;
 import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
 
 import java.text.SimpleDateFormat;
@@ -392,7 +393,7 @@ public class ProfileEditActivity extends AppCompatActivity {
     }
 
     private void confirmDeleteEstablishmentImage(int position, String uri) {
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setMessage(R.string.confirm_delete_image)
                 .setPositiveButton(R.string.action_delete, (dialog, which) -> {
                     if (position >= 0 && position < establishmentImageUris.size()) {
@@ -651,6 +652,7 @@ public class ProfileEditActivity extends AppCompatActivity {
                         public void onSuccess(String value) {
                             Toast.makeText(ProfileEditActivity.this, R.string.saved, Toast.LENGTH_SHORT).show();
                             RoutineScheduler.scheduleAll(ProfileEditActivity.this);
+                            RoutineNotifier.sync(ProfileEditActivity.this);
                             finish();
                         }
 
@@ -666,6 +668,7 @@ public class ProfileEditActivity extends AppCompatActivity {
                 public void onSuccess(String value) {
                     Toast.makeText(ProfileEditActivity.this, R.string.saved, Toast.LENGTH_SHORT).show();
                     RoutineScheduler.scheduleAll(ProfileEditActivity.this);
+                    RoutineNotifier.sync(ProfileEditActivity.this);
                     finish();
                 }
 

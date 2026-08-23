@@ -69,6 +69,66 @@ public final class RoutineScheduler {
         pending.cancel();
     }
 
+    /** Daily (approx. midnight) refresh that reconciles persistent routine notifications. */
+    public static void scheduleDailyRefresh(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            return;
+        }
+        PendingIntent pending = dailyRefreshPendingIntent(context);
+        alarmManager.setInexactRepeating(AlarmManager.RTC_WAKEUP, nextMidnight(),
+                AlarmManager.INTERVAL_DAY, pending);
+    }
+
+    private static final long REPOST_INTERVAL = 60_000L;
+
+    /** Re-arms a one-shot re-post so that a swiped notification comes back within ~a minute. */
+    public static void scheduleRepost(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            return;
+        }
+        PendingIntent pending = repostPendingIntent(context);
+        long trigger = System.currentTimeMillis() + REPOST_INTERVAL;
+        if (canScheduleExact(alarmManager)) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending);
+        } else {
+            alarmManager.setInexactRepeating(AlarmManager.RTC_WAKEUP, trigger, REPOST_INTERVAL, pending);
+        }
+    }
+
+    public static void cancelRepost(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            return;
+        }
+        PendingIntent pending = repostPendingIntent(context);
+        alarmManager.cancel(pending);
+        pending.cancel();
+    }
+
+    private static PendingIntent repostPendingIntent(Context context) {
+        Intent intent = new Intent(context, io.github.jaffe2718.petprofile.ui.RoutineRepostReceiver.class);
+        return PendingIntent.getBroadcast(context, "routine_repost".hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private static PendingIntent dailyRefreshPendingIntent(Context context) {
+        Intent intent = new Intent(context, io.github.jaffe2718.petprofile.ui.RoutineDailyResetReceiver.class);
+        return PendingIntent.getBroadcast(context, "routine_daily_reset".hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private static long nextMidnight() {
+        Calendar c = Calendar.getInstance();
+        c.set(Calendar.HOUR_OF_DAY, 0);
+        c.set(Calendar.MINUTE, 0);
+        c.set(Calendar.SECOND, 0);
+        c.set(Calendar.MILLISECOND, 0);
+        c.add(Calendar.DAY_OF_YEAR, 1);
+        return c.getTimeInMillis();
+    }
+
     private static void schedule(Context context, String routineId, long triggerAt) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) {

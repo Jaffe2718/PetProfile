@@ -533,6 +533,7 @@ public class PetRepository {
                     ids.add(profile.id);
                 }
                 ExportBundle bundle = exportProfiles(ids);
+                bundle.keeperInfo = KeeperInfoManager.load(context);
                 Async.post(callback, bundle, null);
             } catch (Throwable t) {
                 Async.post(callback, null, t);
@@ -608,6 +609,9 @@ public class PetRepository {
                         syncArchiveStatus(profileDao, recordDao, profileId);
                     }
                 });
+                if (bundle.keeperInfo != null) {
+                    KeeperInfoManager.save(context, bundle.keeperInfo);
+                }
                 Async.ui(callback::onSuccess);
             } catch (Throwable t) {
                 Async.ui(() -> callback.onError(t));

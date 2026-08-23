@@ -469,7 +469,7 @@
                 android:layout_marginBottom="8dp"
                 android:hint="@string/label_notes">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <io.github.jaffe2718.petprofile.ui.ScrollableEditText
                     android:id="@+id/establishmentNotesEditText"
                     android:layout_width="match_parent"
                     android:layout_height="180dp"

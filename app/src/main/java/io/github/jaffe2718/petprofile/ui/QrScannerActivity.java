@@ -1,11 +1,16 @@
 package io.github.jaffe2718.petprofile.ui;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
@@ -30,12 +35,14 @@ import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LanTransferClient;
 import io.github.jaffe2718.petprofile.util.QrCodeUtil;
 import io.github.jaffe2718.petprofile.util.RoutineScheduler;
+import io.github.jaffe2718.petprofile.util.RoutineNotifier;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class QrScannerActivity extends AppCompatActivity {
     private static final int REQUEST_CAMERA = 5401;
+    private static final int REQUEST_GALLERY = 5402;
 
     private PetRepository repository;
     private PreviewView previewView;
@@ -47,10 +54,12 @@ public class QrScannerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_qr_scanner);
+        hideSystemBars();
         repository = PetRepository.get(this);
         previewView = findViewById(R.id.previewView);
         barcodeScanner = BarcodeScanning.getClient();
         findViewById(R.id.closeButton).setOnClickListener(v -> finish());
+        findViewById(R.id.pickFromGalleryButton).setOnClickListener(v -> pickFromGallery());
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -80,6 +89,85 @@ public class QrScannerActivity extends AppCompatActivity {
                 Toast.makeText(this, t.getMessage(), Toast.LENGTH_LONG).show();
             }
         }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void pickFromGallery() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        startActivityForResult(intent, REQUEST_GALLERY);
+    }
+
+    private void hideSystemBars() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            android.view.WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.hide(android.view.WindowInsets.Type.statusBars()
+                        | android.view.WindowInsets.Type.navigationBars());
+                controller.setSystemBarsBehavior(
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            | android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_GALLERY || resultCode != RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        analysisExecutor.execute(() -> {
+            try {
+                Bitmap bitmap = loadScaledBitmap(uri);
+                if (bitmap == null) {
+                    Async.ui(() -> Toast.makeText(this, R.string.qr_parse_failed, Toast.LENGTH_LONG).show());
+                    return;
+                }
+                barcodeScanner.process(InputImage.fromBitmap(bitmap, 0))
+                        .addOnSuccessListener(barcodes -> {
+                            if (!barcodes.isEmpty() && barcodes.get(0).getRawValue() != null) {
+                                processed = true;
+                                handleQrText(barcodes.get(0).getRawValue());
+                            } else {
+                                Async.ui(() -> Toast.makeText(this, R.string.qr_parse_failed, Toast.LENGTH_LONG).show());
+                            }
+                        })
+                        .addOnFailureListener(e ->
+                                Async.ui(() -> Toast.makeText(this, R.string.qr_parse_failed, Toast.LENGTH_LONG).show()));
+            } catch (Throwable t) {
+                Async.ui(() -> Toast.makeText(this, t.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    private Bitmap loadScaledBitmap(Uri uri) {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
+            BitmapFactory.decodeStream(input, null, options);
+        } catch (Throwable ignored) {
+            return null;
+        }
+        int sample = 1;
+        int max = 2048;
+        while (options.outWidth / sample > max || options.outHeight / sample > max) {
+            sample *= 2;
+        }
+        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+        decodeOptions.inSampleSize = sample;
+        try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
+            return BitmapFactory.decodeStream(input, null, decodeOptions);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private void analyze(@NonNull ImageProxy imageProxy) {
@@ -130,6 +218,7 @@ public class QrScannerActivity extends AppCompatActivity {
                     public void onSuccess() {
                         Toast.makeText(QrScannerActivity.this, R.string.imported, Toast.LENGTH_SHORT).show();
                         RoutineScheduler.scheduleAll(QrScannerActivity.this);
+                        RoutineNotifier.sync(QrScannerActivity.this);
                         finish();
                     }
 
@@ -159,6 +248,7 @@ public class QrScannerActivity extends AppCompatActivity {
                     public void onSuccess() {
                         Toast.makeText(QrScannerActivity.this, R.string.imported, Toast.LENGTH_SHORT).show();
                         RoutineScheduler.scheduleAll(QrScannerActivity.this);
+                        RoutineNotifier.sync(QrScannerActivity.this);
                         finish();
                     }
 

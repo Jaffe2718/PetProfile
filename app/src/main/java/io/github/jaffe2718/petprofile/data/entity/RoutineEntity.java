@@ -19,6 +19,8 @@ import androidx.room.PrimaryKey;
 public class RoutineEntity {
     public static final String TYPE_WEEKLY = "WEEKLY";
     public static final String TYPE_ONCE = "ONCE";
+    public static final String POLICY_SKIP = "SKIP";
+    public static final String POLICY_CARRY = "CARRY";
 
     @PrimaryKey
     @NonNull
@@ -36,6 +38,16 @@ public class RoutineEntity {
     public int hour;
     public int minute;
     public int second;
+
+    /** How an overdue, uncompleted occurrence is treated: SKIP (drop) or CARRY (keep until done). */
+    @NonNull
+    public String policy = POLICY_SKIP;
+
+    /** True once the current due occurrence has been completed on the marked day. */
+    public boolean completed;
+
+    /** Timestamp of the last interaction (created/checked/unchecked). Defaults to the occurrence time. */
+    public long lastInteractionTime;
 
     /** For TYPE_ONCE: the timestamp at which the reminder fires. */
     public Long onceAt;

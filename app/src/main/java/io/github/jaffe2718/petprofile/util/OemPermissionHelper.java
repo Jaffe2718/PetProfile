@@ -3,6 +3,7 @@ package io.github.jaffe2718.petprofile.util;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.PowerManager;
 import android.provider.Settings;
 
 public final class OemPermissionHelper {
@@ -22,6 +23,11 @@ public final class OemPermissionHelper {
     };
 
     private OemPermissionHelper() {
+    }
+
+    public static boolean isIgnoringBatteryOptimizations(Context context) {
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        return pm == null || pm.isIgnoringBatteryOptimizations(context.getPackageName());
     }
 
     public static boolean openAutoStartSettings(Context context) {

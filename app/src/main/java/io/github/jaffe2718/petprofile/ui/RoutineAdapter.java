@@ -13,6 +13,8 @@ import android.widget.LinearLayout;
 import android.widget.NumberPicker;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -63,14 +65,17 @@ public class RoutineAdapter extends RecyclerView.Adapter<RoutineAdapter.Holder> 
         routine.id = IdUtil.randomId();
         routine.type = RoutineEntity.TYPE_WEEKLY;
         routine.enabled = true;
-        routine.position = items.size();
+        routine.policy = RoutineEntity.POLICY_SKIP;
+        routine.position = 0;
         java.util.Calendar now = java.util.Calendar.getInstance();
         routine.hour = now.get(java.util.Calendar.HOUR_OF_DAY);
         routine.minute = now.get(java.util.Calendar.MINUTE);
         routine.second = now.get(java.util.Calendar.SECOND);
         routine.weekdays = "0,1,2,3,4,5,6";
-        items.add(routine);
-        notifyItemInserted(items.size() - 1);
+        items.add(0, routine);
+        renumberPositions();
+        notifyItemInserted(0);
+        notifyItemRangeChanged(1, items.size() - 1);
         return routine;
     }
 
@@ -81,10 +86,14 @@ public class RoutineAdapter extends RecyclerView.Adapter<RoutineAdapter.Holder> 
         }
         items.remove(index);
         notifyItemRemoved(index);
-        for (int i = index; i < items.size(); i++) {
+        renumberPositions();
+        notifyItemRangeChanged(index, items.size() - index);
+    }
+
+    private void renumberPositions() {
+        for (int i = 0; i < items.size(); i++) {
             items.get(i).position = i;
         }
-        notifyItemRangeChanged(index, items.size() - index);
     }
 
     @NonNull
@@ -107,15 +116,16 @@ public class RoutineAdapter extends RecyclerView.Adapter<RoutineAdapter.Holder> 
 
     class Holder extends RecyclerView.ViewHolder {
         private final EditText titleEdit;
-        private final EditText detailsEdit;
-        private final SwitchCompat enableSwitch;
-        private final ImageButton deleteButton;
-        private final RadioGroup typeGroup;
-        private final RadioButton onceRadio;
-        private final RadioButton weeklyRadio;
-        private final LinearLayout weeklyLayout;
-        private final LinearLayout onceLayout;
-        private final LinearLayout dayContainer;
+    private final EditText detailsEdit;
+    private final SwitchCompat enableSwitch;
+    private final ImageButton deleteButton;
+    private final RadioGroup typeGroup;
+    private final RadioButton onceRadio;
+    private final RadioButton weeklyRadio;
+    private final Spinner policySpinner;
+    private final LinearLayout weeklyLayout;
+    private final LinearLayout onceLayout;
+    private final LinearLayout dayContainer;
         private final Button timeButton;
         private final Button onceTimeButton;
         private RoutineEntity routine;
@@ -129,6 +139,7 @@ public class RoutineAdapter extends RecyclerView.Adapter<RoutineAdapter.Holder> 
             typeGroup = itemView.findViewById(R.id.routineTypeRadioGroup);
             onceRadio = itemView.findViewById(R.id.routineOnceRadio);
             weeklyRadio = itemView.findViewById(R.id.routineWeeklyRadio);
+            policySpinner = itemView.findViewById(R.id.routinePolicySpinner);
             weeklyLayout = itemView.findViewById(R.id.routineWeeklyLayout);
             onceLayout = itemView.findViewById(R.id.routineOnceLayout);
             dayContainer = itemView.findViewById(R.id.routineDayContainer);
@@ -157,6 +168,20 @@ public class RoutineAdapter extends RecyclerView.Adapter<RoutineAdapter.Holder> 
             enableSwitch.setOnCheckedChangeListener((b, checked) -> {
                 if (routine != null) {
                     routine.enabled = checked;
+                }
+            });
+            policySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                    if (routine != null) {
+                        routine.policy = position == 1
+                                ? RoutineEntity.POLICY_CARRY
+                                : RoutineEntity.POLICY_SKIP;
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(android.widget.AdapterView<?> parent) {
                 }
             });
             titleEdit.addTextChangedListener(new TextWatcher() {
@@ -198,6 +223,7 @@ public class RoutineAdapter extends RecyclerView.Adapter<RoutineAdapter.Holder> 
             titleEdit.setText(entity.title);
             detailsEdit.setText(entity.details);
             enableSwitch.setChecked(entity.enabled);
+            setupPolicySpinner();
             if (RoutineEntity.TYPE_ONCE.equals(entity.type)) {
                 onceRadio.setChecked(true);
             } else {
@@ -210,6 +236,21 @@ public class RoutineAdapter extends RecyclerView.Adapter<RoutineAdapter.Holder> 
             boolean weekly = RoutineEntity.TYPE_WEEKLY.equals(entity.type);
             weeklyLayout.setVisibility(weekly ? View.VISIBLE : View.GONE);
             onceLayout.setVisibility(weekly ? View.GONE : View.VISIBLE);
+        }
+
+        private void setupPolicySpinner() {
+            if (policySpinner.getAdapter() == null) {
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(itemView.getContext(),
+                        android.R.layout.simple_spinner_item,
+                        new String[]{
+                                itemView.getContext().getString(R.string.routine_policy_skip),
+                                itemView.getContext().getString(R.string.routine_policy_carry)
+                        });
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                policySpinner.setAdapter(adapter);
+            }
+            boolean carry = RoutineEntity.POLICY_CARRY.equals(routine.policy);
+            policySpinner.setSelection(carry ? 1 : 0);
         }
 
         private void setupDayButtons() {

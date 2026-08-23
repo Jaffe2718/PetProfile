@@ -23,4 +23,6 @@
     <color name="divider">#DCE6E0</color>
     <color name="button_soft_bg">#EAF3ED</color>
     <color name="button_soft_text">#1D2A23</color>
+    <color name="button_soft_bg_deep">#D6E5DC</color>
+    <color name="button_soft_stroke_deep">#BFD2C7</color>
 </resources>

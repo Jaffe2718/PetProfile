@@ -18,6 +18,9 @@ public interface RoutineDao {
     @Query("SELECT * FROM routines WHERE enabled = 1 ORDER BY profileId")
     List<RoutineEntity> getEnabledRoutines();
 
+    @Query("SELECT * FROM routines")
+    List<RoutineEntity> getAllRoutines();
+
     @Query("SELECT * FROM routines WHERE id = :id LIMIT 1")
     RoutineEntity getById(String id);
 

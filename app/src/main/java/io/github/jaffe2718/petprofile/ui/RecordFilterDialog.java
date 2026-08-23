@@ -2,22 +2,21 @@ package io.github.jaffe2718.petprofile.ui;
 
 import android.app.DatePickerDialog;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.graphics.Typeface;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
-import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -103,8 +102,7 @@ public final class RecordFilterDialog {
         ImageButton clearStartButton = view.findViewById(R.id.clearRecordStartDateButton);
         ImageButton clearEndButton = view.findViewById(R.id.clearRecordEndDateButton);
         Spinner typeSpinner = view.findViewById(R.id.recordFilterTypeSpinner);
-        LinearLayout selectedContainer = view.findViewById(R.id.recordSelectedFieldsContainer);
-        LinearLayout candidateContainer = view.findViewById(R.id.recordSelectableFieldsContainer);
+        LinearLayout fieldContainer = view.findViewById(R.id.recordFieldsContainer);
 
         List<String> orderedFieldNames = new ArrayList<>();
         if (allFieldNames != null) {
@@ -119,8 +117,7 @@ public final class RecordFilterDialog {
         updateDateButton(context, startButton, working.startDate);
         updateDateButton(context, endButton, working.endDate);
         bindTypeSpinner(context, typeSpinner, working.type);
-        renderFields(context, selectedContainer, candidateContainer, working.selectedFields,
-                orderedFieldNames);
+        renderFields(context, fieldContainer, working.selectedFields, orderedFieldNames);
 
         startButton.setOnClickListener(v -> pickDate(context, working, true, () -> {
             updateDateButton(context, startButton, working.startDate);
@@ -203,52 +200,54 @@ public final class RecordFilterDialog {
         }
     }
 
-    private static void renderFields(Context context, LinearLayout selectedContainer,
-                                     LinearLayout candidateContainer,
+    private static void renderFields(Context context, LinearLayout container,
                                      LinkedHashSet<String> selected,
                                      List<String> orderedFieldNames) {
-        selectedContainer.removeAllViews();
-        candidateContainer.removeAllViews();
+        container.removeAllViews();
         for (String name : orderedFieldNames) {
-            if (selected.contains(name)) {
-                selectedContainer.addView(createTag(context, name, true,
-                        v -> {
-                            selected.remove(name);
-                            renderFields(context, selectedContainer, candidateContainer,
-                                    selected, orderedFieldNames);
-                        }));
-            } else {
-                candidateContainer.addView(createTag(context, name, false,
-                        v -> {
-                            selected.add(name);
-                            renderFields(context, selectedContainer, candidateContainer,
-                                    selected, orderedFieldNames);
-                        }));
-            }
+            container.addView(createFieldChip(context, name, selected));
         }
     }
 
-    private static View createTag(Context context, String text, boolean selected,
-                                  View.OnClickListener onClick) {
-        TextView tag = new TextView(context);
-        tag.setText(text);
-        tag.setTextSize(12);
-        tag.setGravity(Gravity.CENTER);
-        tag.setSingleLine(true);
-        tag.setTypeface(Typeface.DEFAULT);
-        tag.setTextColor(ContextCompat.getColor(context,
-                selected ? R.color.button_soft_text : R.color.text_primary));
-        tag.setBackgroundResource(selected ? R.drawable.bg_tag_selected : R.drawable.bg_tag_candidate);
-        int padH = dp(context, 14);
-        int padV = dp(context, 8);
-        tag.setPadding(padH, padV, padH, padV);
+    private static Chip createFieldChip(Context context, String name,
+                                        LinkedHashSet<String> selected) {
+        Chip chip = new Chip(context);
+        chip.setCheckable(true);
+        chip.setText(name);
+        chip.setTextSize(12f);
+        chip.setChecked(selected.contains(name));
+        chip.setEnsureMinTouchTargetSize(false);
+        chip.setChipMinHeight(dp(context, 32));
+        chip.setChipStrokeWidth(dp(context, 1));
+        chip.setChipStrokeColor(ColorStateList.valueOf(
+                ContextCompat.getColor(context, R.color.divider)));
+
+        int uncheckedBg = ContextCompat.getColor(context, R.color.surface_subtle);
+        int checkedBg = ContextCompat.getColor(context, R.color.primary);
+        int uncheckedText = ContextCompat.getColor(context, R.color.text_primary);
+        int checkedText = ContextCompat.getColor(context, android.R.color.white);
+        int[][] states = {
+                new int[]{android.R.attr.state_checked},
+                new int[]{-android.R.attr.state_checked}
+        };
+        chip.setChipBackgroundColor(new ColorStateList(states,
+                new int[]{checkedBg, uncheckedBg}));
+        chip.setTextColor(new ColorStateList(states,
+                new int[]{checkedText, uncheckedText}));
+
+        chip.setOnCheckedChangeListener((c, checked) -> {
+            if (checked) {
+                selected.add(name);
+            } else {
+                selected.remove(name);
+            }
+        });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                dp(context, 32));
-        lp.setMarginEnd(dp(context, 8));
-        tag.setLayoutParams(lp);
-        tag.setOnClickListener(onClick);
-        return tag;
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMarginEnd(dp(context, 6));
+        chip.setLayoutParams(lp);
+        return chip;
     }
 
     private static void updateDateButton(Context context, Button button, Long date) {

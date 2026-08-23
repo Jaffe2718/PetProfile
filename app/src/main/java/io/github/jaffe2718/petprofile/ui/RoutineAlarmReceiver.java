@@ -29,17 +29,13 @@ public class RoutineAlarmReceiver extends BroadcastReceiver {
                     if (profile == null || profile.isArchived()) {
                         RoutineScheduler.cancel(context, routineId);
                     } else {
-                        String nickname = RoutineNotifier.findNickname(context, routine.profileId);
-                        RoutineNotifier.post(context, routineId.hashCode(), routine.title, nickname, routine.details);
                         routine.lastFiredAt = System.currentTimeMillis();
-                        if (RoutineEntity.TYPE_ONCE.equals(routine.type)) {
-                            routine.enabled = false;
-                            db.routineDao().update(routine);
-                            RoutineScheduler.cancel(context, routineId);
-                        } else {
-                            db.routineDao().update(routine);
-                            RoutineScheduler.reschedule(context, routine, profile);
-                        }
+                        db.routineDao().update(routine);
+                        // Keep the reminder enabled: once its time has passed it will never be
+                        // re-notified (the scheduler skips onceAt <= now), so it should still
+                        // appear on the Daily Todo screen until the user completes it.
+                        RoutineScheduler.reschedule(context, routine, profile);
+                        RoutineNotifier.syncNow(context);
                     }
                 }
             } catch (Throwable ignored) {

@@ -77,6 +77,29 @@
         </RadioGroup>
 
         <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/routine_policy_label"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+
+            <Spinner
+                android:id="@+id/routinePolicySpinner"
+                style="@style/Widget.PetProfile.Spinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/routineWeeklyLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -141,7 +164,7 @@
             android:layout_marginTop="8dp"
             android:hint="@string/label_details">
 
-            <com.google.android.material.textfield.TextInputEditText
+            <io.github.jaffe2718.petprofile.ui.ScrollableEditText
                 android:id="@+id/routineDetailsEditText"
                 android:layout_width="match_parent"
                 android:layout_height="72dp"

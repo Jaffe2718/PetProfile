@@ -1,6 +1,5 @@
 package io.github.jaffe2718.petprofile.ui;
 
-import android.app.AlertDialog;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.content.Intent;
@@ -29,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
 import io.github.jaffe2718.petprofile.data.FamilyGraph;
@@ -42,6 +42,7 @@ import io.github.jaffe2718.petprofile.util.BackupManager;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 import io.github.jaffe2718.petprofile.util.OemPermissionHelper;
+import io.github.jaffe2718.petprofile.util.RoutineNotifier;
 import io.github.jaffe2718.petprofile.util.RoutineScheduler;
 
 import java.util.ArrayList;
@@ -162,21 +163,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void maybePromptAutoStart() {
+        if (OemPermissionHelper.isIgnoringBatteryOptimizations(this)) {
+            return;
+        }
         android.content.SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
         if (prefs.getBoolean("autostart_prompted", false)) {
             return;
         }
-        android.content.SharedPreferences.Editor markPrompted = prefs.edit()
-                .putBoolean("autostart_prompted", true);
-        new AlertDialog.Builder(this)
+        prefs.edit().putBoolean("autostart_prompted", true).apply();
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.autostart_title)
                 .setMessage(R.string.autostart_message)
-                .setPositiveButton(R.string.autostart_grant, (d, w) -> {
-                    markPrompted.apply();
-                    OemPermissionHelper.openAutoStartSettings(this);
-                })
-                .setNegativeButton(R.string.autostart_later, (d, w) -> markPrompted.apply())
-                .setOnCancelListener(d -> markPrompted.apply())
+                .setPositiveButton(R.string.autostart_grant, (d, w) -> OemPermissionHelper.openAutoStartSettings(this))
+                .setNegativeButton(R.string.autostart_later, null)
                 .show();
     }
 
@@ -194,6 +193,8 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         reload();
         RoutineScheduler.scheduleAll(this);
+        RoutineScheduler.scheduleDailyRefresh(this);
+        RoutineNotifier.sync(this);
     }
 
     private void showFilterDialog() {
@@ -386,13 +387,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void confirmDelete(ProfileDetails details) {
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setMessage(R.string.confirm_delete_profile)
                 .setPositiveButton(R.string.action_delete, (dialog, which) -> {
                     repository.deleteProfile(details.profile.id, new Async.EmptyResult() {
                         @Override
                         public void onSuccess() {
                             reload();
+                            RoutineNotifier.sync(MainActivity.this);
                         }
 
                         @Override
@@ -416,6 +418,10 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
         if (id == R.id.action_keeper_info) {
             showKeeperInfoDialog();
+            return true;
+        }
+        if (id == R.id.action_daily_todo) {
+            startActivity(new Intent(this, DailyTodoActivity.class));
             return true;
         }
         if (id == R.id.action_export) {
@@ -453,7 +459,7 @@ public class MainActivity extends AppCompatActivity {
         updateKeeperHomeButton(homeButton);
         homeButton.setOnClickListener(v -> pickKeeperHome());
 
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.action_keeper_info)
                 .setView(keeperInfoDialogView)
                 .setPositiveButton(R.string.action_save, (dialog, which) -> {
@@ -489,7 +495,7 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             versionName = "0.1.0";
         }
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.action_about)
                 .setMessage(getString(R.string.about_version, versionName)
                         + "\n\n" + getString(R.string.about_message))
@@ -530,7 +536,7 @@ public class MainActivity extends AppCompatActivity {
     private void chooseLanguage() {
         String[] tags = {"zh-CN", "zh-HK", "en-US", "ja-JP"};
         String[] labels = {"简体中文", "繁體中文", "English", "日本語"};
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("Language / 語言 / 语言")
                 .setItems(labels, (dialog, which) -> {
                     LocaleListCompat locales = LocaleListCompat.forLanguageTags(tags[which]);
@@ -599,6 +605,7 @@ public class MainActivity extends AppCompatActivity {
                         public void onSuccess() {
                             Toast.makeText(MainActivity.this, R.string.imported, Toast.LENGTH_SHORT).show();
                             RoutineScheduler.scheduleAll(MainActivity.this);
+                            RoutineNotifier.sync(MainActivity.this);
                             reload();
                         }
 

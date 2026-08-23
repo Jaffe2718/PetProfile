@@ -1,6 +1,5 @@
 package io.github.jaffe2718.petprofile.ui;
 
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -23,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
 import io.github.jaffe2718.petprofile.data.KeeperInfo;
@@ -297,7 +297,7 @@ public class RecordListActivity extends AppCompatActivity {
     }
 
     private void confirmDelete(RecordEntity record) {
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setMessage(R.string.confirm_delete_record)
                 .setPositiveButton(R.string.action_delete, (dialog, which) -> {
                     repository.deleteRecord(record.id, new Async.EmptyResult() {
@@ -464,7 +464,7 @@ public class RecordListActivity extends AppCompatActivity {
     }
 
     private void showLanQrDialog(Bitmap qr) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
         builder.setTitle(R.string.action_show_qr);
         ImageView imageView = new ImageView(this);
         imageView.setPadding(24, 24, 24, 24);

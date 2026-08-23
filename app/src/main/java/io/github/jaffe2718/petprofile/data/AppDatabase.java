@@ -27,10 +27,19 @@ import io.github.jaffe2718.petprofile.data.dao.RoutineDao;
                 RecordImageEntity.class,
                 RoutineEntity.class
         },
-        version = 6,
+        version = 7,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
+    private static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE routines ADD COLUMN policy TEXT NOT NULL DEFAULT 'SKIP'");
+            database.execSQL("ALTER TABLE routines ADD COLUMN completed INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE routines ADD COLUMN lastInteractionTime INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     private static final Migration MIGRATION_4_5 = new Migration(4, 5) {
         @Override
         public void migrate(SupportSQLiteDatabase database) {
@@ -76,7 +85,7 @@ public abstract class AppDatabase extends RoomDatabase {
                             AppDatabase.class,
                             "pet_profile.db"
                     )
-                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration()
                             .build();
                 }

@@ -24,8 +24,17 @@
             android:name=".ui.QrScannerActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
+        <activity
+            android:name=".ui.DailyTodoActivity"
+            android:exported="false" />
+        <receiver
+            android:name=".ui.RoutineRepostReceiver"
+            android:exported="false" />
         <receiver
             android:name=".ui.RoutineAlarmReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".ui.RoutineDailyResetReceiver"
             android:exported="false" />
         <receiver
             android:name=".ui.RoutineBootReceiver"

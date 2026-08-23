@@ -31,24 +31,27 @@
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="42dp"
+                android:layout_width="36dp"
                 android:layout_height="wrap_content"
+                android:ellipsize="none"
+                android:gravity="start|center_vertical"
+                android:maxLines="1"
                 android:text="@string/filter_from" />
 
             <Button
                 android:id="@+id/filterStartDateButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="4dp"
                 android:layout_weight="1"
                 android:backgroundTint="@color/button_soft_bg"
                 android:gravity="start|center_vertical"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
                 android:textColor="@color/button_soft_text"
                 app:icon="@drawable/ic_calendar"
                 app:iconGravity="textStart"
-                app:iconPadding="6dp"
+                app:iconPadding="4dp"
                 app:iconSize="24dp"
                 app:iconTint="@color/button_soft_text" />
 
@@ -70,24 +73,27 @@
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="42dp"
+                android:layout_width="36dp"
                 android:layout_height="wrap_content"
+                android:ellipsize="none"
+                android:gravity="start|center_vertical"
+                android:maxLines="1"
                 android:text="@string/filter_to" />
 
             <Button
                 android:id="@+id/filterEndDateButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="4dp"
                 android:layout_weight="1"
                 android:backgroundTint="@color/button_soft_bg"
                 android:gravity="start|center_vertical"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
                 android:textColor="@color/button_soft_text"
                 app:icon="@drawable/ic_calendar"
                 app:iconGravity="textStart"
-                app:iconPadding="6dp"
+                app:iconPadding="4dp"
                 app:iconSize="24dp"
                 app:iconTint="@color/button_soft_text" />
 
