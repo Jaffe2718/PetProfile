@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 import io.github.jaffe2718.petprofile.R;
+import io.github.jaffe2718.petprofile.ui.RoutineCompleteReceiver;
 import io.github.jaffe2718.petprofile.data.AppDatabase;
 import io.github.jaffe2718.petprofile.data.entity.ProfileCustomFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.ProfileEntity;
@@ -180,6 +181,10 @@ public final class RoutineNotifier {
         if (!body.isEmpty()) {
             builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
         }
+        builder.addAction(new NotificationCompat.Action(
+                R.drawable.ic_done,
+                context.getString(R.string.action_done),
+                completeIntent(context, routine.id)));
         NotificationManagerCompat.from(context).notify(id, builder.build());
     }
 
@@ -187,6 +192,14 @@ public final class RoutineNotifier {
         Intent intent = new Intent(context, io.github.jaffe2718.petprofile.ui.DailyTodoActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return PendingIntent.getActivity(context, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private static PendingIntent completeIntent(Context context, String routineId) {
+        Intent intent = new Intent(context, RoutineCompleteReceiver.class);
+        intent.putExtra(RoutineCompleteReceiver.EXTRA_ROUTINE_ID, routineId);
+        int requestCode = ("complete_" + routineId).hashCode();
+        return PendingIntent.getBroadcast(context, requestCode, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
@@ -218,7 +231,7 @@ public final class RoutineNotifier {
         if (manager == null) {
             return;
         }
-        final int targetImportance = NotificationManager.IMPORTANCE_DEFAULT;
+        final int targetImportance = NotificationManager.IMPORTANCE_HIGH;
         NotificationChannel existing = manager.getNotificationChannel(CHANNEL_ID);
         // Downgrade an existing sound channel to silent. (Android keeps a channel the user has
         // customized, so a user's own choice is preserved if they changed it.)

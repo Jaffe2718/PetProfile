@@ -93,7 +93,11 @@ public final class RoutineScheduler {
         if (canScheduleExact(alarmManager)) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending);
         } else {
-            alarmManager.setInexactRepeating(AlarmManager.RTC_WAKEUP, trigger, REPOST_INTERVAL, pending);
+            Intent show = new Intent(context, io.github.jaffe2718.petprofile.ui.MainActivity.class);
+            PendingIntent showIntent = PendingIntent.getActivity(context, "routine_repost_show".hashCode(), show,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(trigger, showIntent);
+            alarmManager.setAlarmClock(info, pending);
         }
     }
 
