@@ -14,6 +14,7 @@
     <color name="profile_archived_text">#4A4F55</color>
     <color name="record_establishment_bg">#E7F1FC</color>
     <color name="record_daily_bg">#EAF3ED</color>
+    <color name="todo_due_bg">#FCE7D3</color>
     <color name="record_transfer_bg">#F1E8FA</color>
     <color name="record_archive_bg">#FBE8EA</color>
     <color name="surface">#FFFFFF</color>

@@ -604,8 +604,10 @@ public class DailyTodoActivity extends AppCompatActivity {
                 subtitle.setText(item.subtitle);
                 taxonomy.setText(item.taxonomy);
                 details.setText(item.details);
+                boolean upcoming = !item.completed && now < item.dueTime;
                 checkbox.setChecked(item.completed);
                 checkbox.setEnabled(item.completed || now >= item.dueTime);
+                checkbox.setVisibility(upcoming ? View.GONE : View.VISIBLE);
 
                 if (item.profile.avatarUri != null && !item.profile.avatarUri.trim().isEmpty()) {
                     Glide.with(avatar).load(item.profile.avatarUri).into(avatar);
@@ -619,7 +621,7 @@ public class DailyTodoActivity extends AppCompatActivity {
                     bg = R.color.profile_archived_bg;
                     text = R.color.text_secondary;
                 } else if (now >= item.dueTime) {
-                    bg = R.color.record_archive_bg;
+                    bg = R.color.todo_due_bg;
                     text = R.color.text_primary;
                 } else {
                     bg = R.color.record_daily_bg;

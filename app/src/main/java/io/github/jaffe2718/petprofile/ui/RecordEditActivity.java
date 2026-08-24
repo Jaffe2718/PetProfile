@@ -480,8 +480,15 @@ public class RecordEditActivity extends AppCompatActivity {
     }
 
     private void updateTransferPlaceButtons() {
-        transferFromPlaceButton.setText(transferFromPlaceText);
-        transferToPlaceButton.setText(transferToPlaceText);
+        transferFromPlaceButton.setText(formatLocationLabel(R.string.label_transfer_from_place, transferFromPlaceText));
+        transferToPlaceButton.setText(formatLocationLabel(R.string.label_transfer_to_place, transferToPlaceText));
+    }
+
+    private String formatLocationLabel(int labelRes, String place) {
+        if (place == null || place.isEmpty()) {
+            return getString(labelRes);
+        }
+        return getString(labelRes) + ": " + place;
     }
 
     private void pickImages() {

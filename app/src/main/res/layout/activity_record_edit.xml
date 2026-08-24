@@ -54,30 +54,30 @@
                 android:id="@+id/typeRadioGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
                 <RadioButton
                     android:id="@+id/typeEstablishmentRadio"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/record_establishment" />
 
                 <RadioButton
                     android:id="@+id/typeDailyRadio"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:checked="true"
                     android:text="@string/record_daily" />
 
                 <RadioButton
                     android:id="@+id/typeTransferRadio"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/record_transfer" />
 
                 <RadioButton
                     android:id="@+id/typeArchiveRadio"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/record_archive" />
             </RadioGroup>
@@ -221,9 +221,11 @@
                 <Button
                     android:id="@+id/transferFromPlaceButton"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
+                    android:layout_height="wrap_content"
                     android:minWidth="0dp"
-                    android:minHeight="0dp"
+                    android:minHeight="64dp"
+                    android:maxLines="2"
+                    android:singleLine="false"
                     android:backgroundTint="@color/button_soft_bg"
                     android:gravity="start|center_vertical"
                     android:paddingStart="10dp"
@@ -238,9 +240,11 @@
                 <Button
                     android:id="@+id/transferToPlaceButton"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
+                    android:layout_height="wrap_content"
                     android:minWidth="0dp"
-                    android:minHeight="0dp"
+                    android:minHeight="64dp"
+                    android:maxLines="2"
+                    android:singleLine="false"
                     android:backgroundTint="@color/button_soft_bg"
                     android:gravity="start|center_vertical"
                     android:paddingStart="10dp"
