@@ -273,9 +273,6 @@ public final class RoutineNotifier {
     }
 
     private static boolean isNicknameField(ProfileCustomFieldEntity field) {
-        return "nickname".equalsIgnoreCase(field.fieldKey)
-                || "nickname".equalsIgnoreCase(field.fieldName)
-                || "昵称".equals(field.fieldName)
-                || "暱稱".equals(field.fieldName);
+        return TaxonomyUtil.isNickname(field);
     }
 }

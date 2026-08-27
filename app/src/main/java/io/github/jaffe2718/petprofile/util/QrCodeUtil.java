@@ -2,7 +2,6 @@ package io.github.jaffe2718.petprofile.util;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.net.Uri;
 
 import com.google.gson.Gson;
 import com.google.zxing.BarcodeFormat;
@@ -21,7 +20,6 @@ import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;

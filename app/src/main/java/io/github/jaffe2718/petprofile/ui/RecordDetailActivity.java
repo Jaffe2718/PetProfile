@@ -22,6 +22,7 @@ import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
+import io.github.jaffe2718.petprofile.util.FieldValueUtil;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 
 import java.text.SimpleDateFormat;
@@ -127,10 +128,7 @@ public class RecordDetailActivity extends AppCompatActivity {
             fieldView.setPadding(0, 6, 0, 6);
             String value;
             if (FieldType.NUMBER.equals(field.fieldType)) {
-                value = field.numericValue == null ? "" : String.valueOf(field.numericValue);
-                if (field.unit != null && !field.unit.trim().isEmpty()) {
-                    value += " " + field.unit;
-                }
+                value = FieldValueUtil.formatNumeric(field.numericValue, field.unit);
             } else {
                 value = field.textValue == null ? "" : field.textValue;
             }

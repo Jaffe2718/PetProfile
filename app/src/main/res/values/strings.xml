@@ -175,4 +175,8 @@
     <string name="transfer_lan_no_ip">无法获取本机局域网 IP，请确认已连接 Wi-Fi。</string>
     <string name="transfer_lan_failed">局域网传输启动失败。</string>
     <string name="transfer_lan_connecting">正在通过局域网传输完整档案树…</string>
+    <string name="map_search_hint">搜索地址</string>
+    <string name="action_search">搜索</string>
+    <string name="map_search_no_result">未找到该地址</string>
+    <string name="map_search_failed">地址搜索失败</string>
 </resources>

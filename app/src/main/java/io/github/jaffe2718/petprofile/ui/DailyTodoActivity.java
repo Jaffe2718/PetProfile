@@ -12,7 +12,6 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
@@ -254,10 +253,7 @@ public class DailyTodoActivity extends AppCompatActivity {
     private static String findNickname(List<ProfileCustomFieldEntity> fields) {
         if (fields != null) {
             for (ProfileCustomFieldEntity field : fields) {
-                if ("nickname".equalsIgnoreCase(field.fieldKey)
-                        || "nickname".equalsIgnoreCase(field.fieldName)
-                        || "昵称".equals(field.fieldName)
-                        || "暱稱".equals(field.fieldName)) {
+                if (TaxonomyUtil.isNickname(field)) {
                     return field.textValue == null ? "" : field.textValue.trim();
                 }
             }

@@ -175,4 +175,8 @@
     <string name="transfer_lan_no_ip">無法取得本機區域網絡 IP，請確認已連接 Wi-Fi。</string>
     <string name="transfer_lan_failed">區域網絡傳輸啟動失敗。</string>
     <string name="transfer_lan_connecting">正在透過區域網絡傳輸完整檔案樹…</string>
+    <string name="map_search_hint">搜尋地址</string>
+    <string name="action_search">搜尋</string>
+    <string name="map_search_no_result">找不到該地址</string>
+    <string name="map_search_failed">地址搜尋失敗</string>
 </resources>

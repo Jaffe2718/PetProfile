@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.net.Uri;
 import android.text.Layout;
@@ -23,7 +24,6 @@ import io.github.jaffe2718.petprofile.data.FieldType;
 import io.github.jaffe2718.petprofile.data.ProfileDetails;
 import io.github.jaffe2718.petprofile.data.RecordType;
 import io.github.jaffe2718.petprofile.data.entity.ProfileCustomFieldEntity;
-import io.github.jaffe2718.petprofile.data.entity.ProfileEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 
@@ -42,6 +42,12 @@ import io.noties.markwon.Markwon;
 public final class CardShareManager {
     private static final int WIDTH = 1080;
     private static final int GAP = 28;
+    private static final int IMAGE_GAP = 24;
+    private static final int RECORD_IMAGE_MAX_WIDTH = WIDTH - 64 - 64;
+    private static final int AVATAR_MAX_WIDTH = 300;
+    private static final int AVATAR_BOX_SIZE = 300;
+    private static final int AVATAR_GAP = 24;
+    private static final int AVATAR_AREA_HEIGHT = 350;
     private static final int BACKGROUND = Color.rgb(245, 248, 244);
 
     private CardShareManager() {
@@ -139,20 +145,66 @@ public final class CardShareManager {
         valuePaint.setTextSize(40f);
 
         float y = 280f;
-        y = drawLine(canvas, labelPaint, valuePaint, "ID", details.profile.id, y);
-        y = drawLine(canvas, labelPaint, valuePaint, "Taxonomy", TaxonomyUtil.speciesDisplay(details.profile), y);
-        for (ProfileCustomFieldEntity field : details.customFields) {
-            String value = field.numericValue != null
-                    ? String.valueOf(field.numericValue) + (field.unit == null ? "" : " " + field.unit)
-                    : field.textValue;
-            y = drawLine(canvas, labelPaint, valuePaint, field.fieldName, value, y);
+        for (String[] line : topCardLines(context, details)) {
+            y = drawLine(canvas, labelPaint, valuePaint, line[0], line[1], y);
         }
         if (details.profile.avatarUri != null && !details.profile.avatarUri.trim().isEmpty()) {
-            Bitmap avatar = decodeBitmap(context, Uri.parse(details.profile.avatarUri), 300);
+            Bitmap avatar = decodeBitmap(context, Uri.parse(details.profile.avatarUri), AVATAR_MAX_WIDTH);
             if (avatar != null) {
-                canvas.drawBitmap(avatar, null, new RectF(48, y + 24, 348, y + 324), null);
+                // Center-crop a square from the middle of the source (keep the smaller
+                // dimension, crop the excess from the longer side), then scale to a
+                // fixed square. This avoids distortion and keeps the subject centered.
+                int side = Math.min(avatar.getWidth(), avatar.getHeight());
+                if (side <= 0) {
+                    side = 1;
+                }
+                int srcLeft = (avatar.getWidth() - side) / 2;
+                int srcTop = (avatar.getHeight() - side) / 2;
+                Rect src = new Rect(srcLeft, srcTop, srcLeft + side, srcTop + side);
+                RectF dst = new RectF(48, y + AVATAR_GAP,
+                        48 + AVATAR_BOX_SIZE, y + AVATAR_GAP + AVATAR_BOX_SIZE);
+                canvas.drawBitmap(avatar, src, dst, null);
             }
         }
+    }
+
+    private static List<String[]> topCardLines(Context context, ProfileDetails details) {
+        List<String[]> lines = new ArrayList<>();
+        ProfileCustomFieldEntity nickname = findNicknameField(details.customFields);
+        if (nickname != null && nickname.textValue != null && !nickname.textValue.trim().isEmpty()) {
+            lines.add(new String[]{context.getString(R.string.label_nickname), nickname.textValue.trim()});
+        }
+        lines.add(new String[]{"ID", details.profile.id});
+        lines.add(new String[]{context.getString(R.string.label_taxonomy_section),
+                TaxonomyUtil.speciesDisplay(details.profile)});
+        if (details.customFields != null) {
+            for (ProfileCustomFieldEntity field : details.customFields) {
+                if (field == nickname) {
+                    continue;
+                }
+                lines.add(new String[]{field.fieldName == null ? "" : field.fieldName, fieldValue(field)});
+            }
+        }
+        return lines;
+    }
+
+    private static ProfileCustomFieldEntity findNicknameField(List<ProfileCustomFieldEntity> fields) {
+        if (fields == null) {
+            return null;
+        }
+        for (ProfileCustomFieldEntity field : fields) {
+            if (TaxonomyUtil.isNickname(field)) {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    private static String fieldValue(ProfileCustomFieldEntity field) {
+        if (field.numericValue != null) {
+            return FieldValueUtil.formatNumeric(field.numericValue, field.unit);
+        }
+        return field.textValue == null ? "" : field.textValue;
     }
 
     private static float drawLine(Canvas canvas, Paint label, Paint value, String name, String text, float y) {
@@ -178,16 +230,11 @@ public final class CardShareManager {
         valuePaint.setTextSize(40f);
 
         float y = 280f;
-        y += lineHeight(details.profile.id, valuePaint);
-        y += lineHeight(TaxonomyUtil.speciesDisplay(details.profile), valuePaint);
-        for (ProfileCustomFieldEntity field : details.customFields) {
-            String value = field.numericValue != null
-                    ? String.valueOf(field.numericValue) + (field.unit == null ? "" : " " + field.unit)
-                    : field.textValue;
-            y += lineHeight(value, valuePaint);
+        for (String[] line : topCardLines(context, details)) {
+            y += lineHeight(line[1], valuePaint);
         }
         if (details.profile.avatarUri != null && !details.profile.avatarUri.trim().isEmpty()) {
-            y += 350f;
+            y += AVATAR_AREA_HEIGHT;
         } else {
             y += 24f;
         }
@@ -203,7 +250,7 @@ public final class CardShareManager {
         int fieldsHeight = fields == null ? 0 : fields.size() * 44;
         int metadataHeight = metadataLines(context, record).size() * 44;
         int notesHeight = markdownHeight(context, markwon, record.notesMarkdown, WIDTH - 128);
-        int imagesHeight = images == null || images.isEmpty() ? 0 : 244;
+        int imagesHeight = imagesLayoutHeight(context, images);
         return 320 + fieldsHeight + metadataHeight + notesHeight + imagesHeight;
     }
 
@@ -267,10 +314,7 @@ public final class CardShareManager {
             for (RecordFieldEntity field : fields) {
                 String value;
                 if (FieldType.NUMBER.equals(field.fieldType)) {
-                    value = field.numericValue == null ? "" : String.valueOf(field.numericValue);
-                    if (field.unit != null && !field.unit.trim().isEmpty()) {
-                        value += " " + field.unit;
-                    }
+                    value = FieldValueUtil.formatNumeric(field.numericValue, field.unit);
                 } else {
                     value = field.textValue == null ? "" : field.textValue;
                 }
@@ -293,15 +337,18 @@ public final class CardShareManager {
         y += notesView.getHeight();
 
         if (images != null && !images.isEmpty()) {
-            y += 24f;
-            int size = 180;
-            int margin = 12;
+            y += IMAGE_GAP;
             int count = Math.min(3, images.size());
             for (int i = 0; i < count; i++) {
-                Bitmap image = decodeBitmap(context, Uri.parse(images.get(i)), size);
+                if (i > 0) {
+                    y += IMAGE_GAP;
+                }
+                Bitmap image = decodeBitmap(context, Uri.parse(images.get(i)), RECORD_IMAGE_MAX_WIDTH);
                 if (image != null) {
-                    canvas.drawBitmap(image, null, new RectF(x + i * (size + margin), y,
-                            x + i * (size + margin) + size, y + size), null);
+                    int drawWidth = Math.min(RECORD_IMAGE_MAX_WIDTH, image.getWidth());
+                    int drawHeight = Math.round(drawWidth * (float) image.getHeight() / image.getWidth());
+                    canvas.drawBitmap(image, null, new RectF(x, y, x + drawWidth, y + drawHeight), null);
+                    y += drawHeight;
                 }
             }
         }
@@ -419,18 +466,55 @@ public final class CardShareManager {
         }
     }
 
+    private static int imagesLayoutHeight(Context context, List<String> images) {
+        if (images == null || images.isEmpty()) {
+            return 0;
+        }
+        int count = Math.min(3, images.size());
+        int total = IMAGE_GAP;
+        for (int i = 0; i < count; i++) {
+            if (i > 0) {
+                total += IMAGE_GAP;
+            }
+            total += scaledImageHeight(context, images.get(i));
+        }
+        return total;
+    }
+
+    private static int scaledImageHeight(Context context, String uri) {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        decodeBounds(context, Uri.parse(uri), options);
+        int originalWidth = options.outWidth;
+        int originalHeight = options.outHeight;
+        if (originalWidth <= 0 || originalHeight <= 0) {
+            return 0;
+        }
+        int sample = calculateSampleSize(options, RECORD_IMAGE_MAX_WIDTH);
+        int decodedWidth = Math.max(1, (originalWidth + sample - 1) / sample);
+        int decodedHeight = Math.max(1, (originalHeight + sample - 1) / sample);
+        int drawWidth = Math.min(RECORD_IMAGE_MAX_WIDTH, decodedWidth);
+        return Math.round(drawWidth * (float) decodedHeight / decodedWidth);
+    }
+
+    private static void decodeBounds(Context context, Uri uri, BitmapFactory.Options options) {
+        options.inJustDecodeBounds = true;
+        if ("content".equals(uri.getScheme())) {
+            try (InputStream input = context.getContentResolver().openInputStream(uri)) {
+                if (input != null) {
+                    BitmapFactory.decodeStream(input, null, options);
+                }
+            } catch (Exception ignored) {
+            }
+        } else {
+            BitmapFactory.decodeFile(uri.getPath(), options);
+        }
+    }
+
     private static Bitmap decodeBitmap(Context context, Uri uri, int maxSize) {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            if ("content".equals(uri.getScheme())) {
-                try (InputStream input = context.getContentResolver().openInputStream(uri)) {
-                    if (input == null) return null;
-                    BitmapFactory.decodeStream(input, null, options);
-                }
-            } else {
-                BitmapFactory.decodeFile(uri.getPath(), options);
-            }
+            decodeBounds(context, uri, options);
             options.inSampleSize = calculateSampleSize(options, maxSize);
             options.inJustDecodeBounds = false;
             if ("content".equals(uri.getScheme())) {

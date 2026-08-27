@@ -3,6 +3,10 @@ package io.github.jaffe2718.petprofile.ui;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -10,16 +14,28 @@ import android.webkit.WebViewClient;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
 import io.github.jaffe2718.petprofile.R;
+import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 
-import java.util.Locale;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MapPickerActivity extends AppCompatActivity {
     public static final String EXTRA_INITIAL_LATITUDE = "initial_latitude";
@@ -32,6 +48,12 @@ public class MapPickerActivity extends AppCompatActivity {
     private int selectedProvider;
     private double pendingGpsLat = Double.NaN;
     private double pendingGpsLng = Double.NaN;
+    private EditText searchEditText;
+    private View searchButton;
+    private boolean searchInFlight;
+    private long lastSearchAtMs;
+
+    private static final long SEARCH_THROTTLE_MS = 1000L;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -99,6 +121,7 @@ public class MapPickerActivity extends AppCompatActivity {
         Button confirmButton = findViewById(R.id.confirmButton);
         confirmButton.setOnClickListener(v -> webView.evaluateJavascript("chooseLocation()", null));
 
+        setupSearch();
         requestCurrentMapLocation();
     }
 
@@ -146,6 +169,110 @@ public class MapPickerActivity extends AppCompatActivity {
                 "moveMarker(" + latitude + "," + longitude + ")",
                 null
         );
+    }
+
+    private void setupSearch() {
+        searchEditText = findViewById(R.id.mapSearchEditText);
+        searchButton = findViewById(R.id.mapSearchButton);
+        if (searchButton != null) {
+            searchButton.setOnClickListener(v -> performAddressSearch());
+        }
+        if (searchEditText != null) {
+            searchEditText.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_SEARCH
+                        || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                        && event.getAction() == KeyEvent.ACTION_UP)) {
+                    performAddressSearch();
+                    return true;
+                }
+                return false;
+            });
+        }
+    }
+
+    private void performAddressSearch() {
+        if (searchInFlight || searchEditText == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastSearchAtMs < SEARCH_THROTTLE_MS) {
+            return;
+        }
+        String query = searchEditText.getText() == null
+                ? ""
+                : searchEditText.getText().toString().trim();
+        if (query.isEmpty()) {
+            return;
+        }
+        searchInFlight = true;
+        lastSearchAtMs = now;
+        hideKeyboard();
+        Async.run(() -> {
+            double[] coord = null;
+            String error = null;
+            try {
+                coord = geocode(query);
+            } catch (Throwable t) {
+                error = t.getMessage();
+            }
+            final double[] result = coord;
+            final String err = error;
+            Async.ui(() -> {
+                searchInFlight = false;
+                if (result != null && result.length >= 2) {
+                    moveMapMarker(result[0], result[1]);
+                } else if (err != null) {
+                    Toast.makeText(MapPickerActivity.this,
+                            R.string.map_search_failed, Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MapPickerActivity.this,
+                            R.string.map_search_no_result, Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    private double[] geocode(String query) throws Exception {
+        String url = "https://nominatim.openstreetmap.org/search?q="
+                + URLEncoder.encode(query, "UTF-8")
+                + "&format=jsonv2&limit=1";
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setConnectTimeout(8000);
+        connection.setReadTimeout(8000);
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("User-Agent", "PetProfile/0.2.3 (Android; address-search)");
+        try {
+            int code = connection.getResponseCode();
+            if (code < 200 || code >= 300) {
+                throw new IOException("HTTP " + code);
+            }
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder builder = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    builder.append(line);
+                }
+                JSONArray array = new JSONArray(builder.toString());
+                if (array.length() == 0) {
+                    return null;
+                }
+                JSONObject first = array.getJSONObject(0);
+                double lat = Double.parseDouble(first.getString("lat"));
+                double lon = Double.parseDouble(first.getString("lon"));
+                return new double[]{lat, lon};
+            }
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager imm = getSystemService(InputMethodManager.class);
+        if (imm != null && getCurrentFocus() != null) {
+            imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+        }
     }
 
     @Override

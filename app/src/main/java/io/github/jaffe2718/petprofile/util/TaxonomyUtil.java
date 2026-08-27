@@ -70,12 +70,20 @@ public final class TaxonomyUtil {
         }
     }
 
+    public static boolean isNickname(ProfileCustomFieldEntity field) {
+        if (field == null) {
+            return false;
+        }
+        return "nickname".equalsIgnoreCase(field.fieldKey)
+                || "昵称".equals(field.fieldName)
+                || "暱稱".equals(field.fieldName)
+                || "nickname".equalsIgnoreCase(field.fieldName);
+    }
+
     public static String displayName(ProfileEntity profile, List<ProfileCustomFieldEntity> fields) {
         if (fields != null) {
             for (ProfileCustomFieldEntity field : fields) {
-                if ("nickname".equalsIgnoreCase(field.fieldKey)
-                        || "昵称".equals(field.fieldName)
-                        || "nickname".equalsIgnoreCase(field.fieldName)) {
+                if (isNickname(field)) {
                     if (field.textValue != null && !field.textValue.trim().isEmpty()) {
                         return field.textValue.trim();
                     }

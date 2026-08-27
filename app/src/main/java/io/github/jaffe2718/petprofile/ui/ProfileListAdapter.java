@@ -18,6 +18,7 @@ import com.google.android.material.card.MaterialCardView;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ProfileDetails;
 import io.github.jaffe2718.petprofile.data.entity.ProfileCustomFieldEntity;
+import io.github.jaffe2718.petprofile.util.FieldValueUtil;
 import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
 
 import java.text.SimpleDateFormat;
@@ -157,20 +158,13 @@ public class ProfileListAdapter extends RecyclerView.Adapter<ProfileListAdapter.
 
         private String formatAttribute(ProfileCustomFieldEntity field) {
             if (io.github.jaffe2718.petprofile.data.FieldType.NUMBER.equals(field.fieldType)) {
-                StringBuilder value = new StringBuilder(field.numericValue == null ? "" : String.valueOf(field.numericValue));
-                if (field.unit != null && !field.unit.trim().isEmpty()) {
-                    value.append(' ').append(field.unit.trim());
-                }
-                return value.toString();
+                return FieldValueUtil.formatNumeric(field.numericValue, field.unit);
             }
             return field.textValue == null ? "" : field.textValue;
         }
 
         private boolean isNicknameField(ProfileCustomFieldEntity field) {
-            return "nickname".equalsIgnoreCase(field.fieldKey)
-                    || "nickname".equalsIgnoreCase(field.fieldName)
-                    || "昵称".equals(field.fieldName)
-                    || "暱稱".equals(field.fieldName);
+            return TaxonomyUtil.isNickname(field);
         }
 
         private void applyGenderBackground(ProfileDetails details) {

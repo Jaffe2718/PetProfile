@@ -782,10 +782,7 @@ public class ProfileEditActivity extends AppCompatActivity {
     }
 
     private boolean isNicknameField(ProfileCustomFieldEntity entity) {
-        return "nickname".equalsIgnoreCase(entity.fieldKey)
-                || "nickname".equalsIgnoreCase(entity.fieldName)
-                || "昵称".equals(entity.fieldName)
-                || "暱稱".equals(entity.fieldName);
+        return TaxonomyUtil.isNickname(entity);
     }
 
     private String sourceValue() {

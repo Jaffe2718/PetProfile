@@ -175,4 +175,8 @@
     <string name="transfer_lan_no_ip">Unable to get this device’s LAN IP. Make sure Wi-Fi is connected.</string>
     <string name="transfer_lan_failed">Failed to start LAN transfer.</string>
     <string name="transfer_lan_connecting">Transferring the complete profile tree over LAN…</string>
+    <string name="map_search_hint">Search address</string>
+    <string name="action_search">Search</string>
+    <string name="map_search_no_result">Address not found</string>
+    <string name="map_search_failed">Address search failed</string>
 </resources>

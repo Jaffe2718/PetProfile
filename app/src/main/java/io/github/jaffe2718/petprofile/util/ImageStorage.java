@@ -70,7 +70,7 @@ public final class ImageStorage {
         return result.toString();
     }
 
-    private static String guessExtension(Context context, Uri uri) {
+    public static String guessExtension(Context context, Uri uri) {
         String mime = context.getContentResolver().getType(uri);
         String ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime == null ? "" : mime);
         if (ext != null && !ext.isEmpty()) {

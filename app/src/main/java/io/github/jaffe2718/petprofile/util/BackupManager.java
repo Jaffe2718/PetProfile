@@ -4,7 +4,6 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
-import android.webkit.MimeTypeMap;
 
 import com.google.gson.Gson;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
@@ -167,7 +166,7 @@ public final class BackupManager {
         if (!isReadable(uri)) {
             return uriText;
         }
-        String extension = guessExtension(context, uri);
+        String extension = ImageStorage.guessExtension(context, uri);
         String zipPath = namer.nextPath(extension);
         originalToZip.put(uriText, zipPath);
         zipToUri.put(zipPath, uri);
@@ -248,22 +247,6 @@ public final class BackupManager {
             throw new IOException("Unable to open stream for " + uri);
         }
         return input;
-    }
-
-    private static String guessExtension(Context context, Uri uri) {
-        String mime = context.getContentResolver().getType(uri);
-        String ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime == null ? "" : mime);
-        if (ext != null && !ext.isEmpty()) {
-            return "." + ext;
-        }
-        String path = uri.getLastPathSegment();
-        if (path != null && path.contains(".")) {
-            String suffix = path.substring(path.lastIndexOf('.'));
-            if (suffix.length() <= 8) {
-                return suffix;
-            }
-        }
-        return ".jpg";
     }
 
     private static final class ZipImageNamer {

@@ -175,4 +175,8 @@
     <string name="transfer_lan_no_ip">この端末の LAN IP を取得できません。Wi-Fi 接続を確認してください。</string>
     <string name="transfer_lan_failed">LAN 転送を開始できませんでした。</string>
     <string name="transfer_lan_connecting">完全なプロフィールツリーを LAN 経由で転送しています…</string>
+    <string name="map_search_hint">住所を検索</string>
+    <string name="action_search">検索</string>
+    <string name="map_search_no_result">住所が見つかりません</string>
+    <string name="map_search_failed">住所検索に失敗しました</string>
 </resources>

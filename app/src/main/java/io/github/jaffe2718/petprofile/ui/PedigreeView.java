@@ -1005,8 +1005,7 @@ public class PedigreeView extends View {
         String nickname() {
             if (details.customFields != null) {
                 for (ProfileCustomFieldEntity field : details.customFields) {
-                    if ("nickname".equalsIgnoreCase(field.fieldKey)
-                            || "nickname".equalsIgnoreCase(field.fieldName)) {
+                    if (TaxonomyUtil.isNickname(field)) {
                         if (field.textValue != null && !field.textValue.trim().isEmpty()) {
                             return field.textValue.trim();
                         }

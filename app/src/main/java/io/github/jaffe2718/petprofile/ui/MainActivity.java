@@ -31,7 +31,6 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
-import io.github.jaffe2718.petprofile.data.FamilyGraph;
 import io.github.jaffe2718.petprofile.data.KeeperInfo;
 import io.github.jaffe2718.petprofile.data.ProfileDetails;
 import io.github.jaffe2718.petprofile.data.entity.ProfileCustomFieldEntity;
@@ -43,6 +42,7 @@ import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
 import io.github.jaffe2718.petprofile.util.LocationHelper;
 import io.github.jaffe2718.petprofile.util.OemPermissionHelper;
 import io.github.jaffe2718.petprofile.util.RoutineNotifier;
+import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
 import io.github.jaffe2718.petprofile.util.RoutineScheduler;
 
 import java.util.ArrayList;
@@ -295,10 +295,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isNicknameField(ProfileCustomFieldEntity field) {
-        return "nickname".equalsIgnoreCase(field.fieldKey)
-                || "nickname".equalsIgnoreCase(field.fieldName)
-                || "昵称".equals(field.fieldName)
-                || "暱稱".equals(field.fieldName);
+        return TaxonomyUtil.isNickname(field);
     }
 
     private boolean containsIgnoreCase(String value, String query) {
