@@ -53,7 +53,7 @@
 
         <service
             android:name=".mcp.McpService"
-            android:exported="true"
+            android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"

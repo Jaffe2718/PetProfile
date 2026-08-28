@@ -1,5 +1,11 @@
 package io.github.jaffe2718.petprofile.ui;
 
+import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
@@ -12,6 +18,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.NumericPoint;
 import io.github.jaffe2718.petprofile.data.NumericSeries;
+import io.github.jaffe2718.petprofile.mcp.McpServer;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
 
@@ -27,6 +34,34 @@ public class ChartActivity extends AppCompatActivity {
     private LineChartView chartView;
     private TextView emptyTextView;
     private List<NumericSeries> seriesList = new ArrayList<>();
+
+    private final BroadcastReceiver dataChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            loadData();
+        }
+    };
+
+    @Override
+    @SuppressLint("UnprotectedBroadcastReceiver")
+    protected void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter(McpServer.ACTION_DATA_CHANGED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(dataChangeReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(dataChangeReceiver, filter);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        try {
+            unregisterReceiver(dataChangeReceiver);
+        } catch (Throwable ignored) {
+        }
+        super.onStop();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

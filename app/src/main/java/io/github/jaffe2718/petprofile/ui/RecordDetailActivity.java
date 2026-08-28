@@ -1,6 +1,11 @@
 package io.github.jaffe2718.petprofile.ui;
 
+import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Menu;
@@ -20,6 +25,7 @@ import io.github.jaffe2718.petprofile.data.RecordDetails;
 import io.github.jaffe2718.petprofile.data.RecordType;
 import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
+import io.github.jaffe2718.petprofile.mcp.McpServer;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.FieldValueUtil;
@@ -49,6 +55,13 @@ public class RecordDetailActivity extends AppCompatActivity {
     private LinearLayout attributesContainer;
     private TextView notesTextView;
     private LinearLayout imagesContainer;
+
+    private final BroadcastReceiver dataChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            loadRecord();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +95,27 @@ public class RecordDetailActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadRecord();
+    }
+
+    @Override
+    @SuppressLint("UnprotectedBroadcastReceiver")
+    protected void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter(McpServer.ACTION_DATA_CHANGED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(dataChangeReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(dataChangeReceiver, filter);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        try {
+            unregisterReceiver(dataChangeReceiver);
+        } catch (Throwable ignored) {
+        }
+        super.onStop();
     }
 
     private void loadRecord() {
