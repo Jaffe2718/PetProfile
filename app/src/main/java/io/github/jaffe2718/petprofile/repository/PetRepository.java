@@ -385,6 +385,125 @@ public class PetRepository {
         });
     }
 
+    // --- Synchronous facade for the LAN MCP tools. These run on a server worker thread and
+    // reuse the same validation / transaction helpers as the asynchronous UI paths. ---
+
+    public String createProfileSync(
+            ProfileEntity profile,
+            List<ProfileCustomFieldEntity> customFields,
+            String fatherId,
+            String motherId,
+            RecordEntity establishment,
+            List<RecordFieldEntity> establishmentFields,
+            List<RecordImageEntity> establishmentImages,
+            List<RoutineEntity> routines
+    ) {
+        if (profile == null || establishment == null) {
+            throw new IllegalArgumentException("Profile and establishment record are required.");
+        }
+        if (profile.id == null || profile.id.trim().isEmpty()) {
+            profile.id = IdUtil.timeBasedId();
+        } else {
+            profile.id = IdUtil.normalizeId(profile.id);
+        }
+        long now = System.currentTimeMillis();
+        profile.createdAt = establishment.timestamp;
+        profile.updatedAt = now;
+        establishment.id = IdUtil.randomId();
+        establishment.profileId = profile.id;
+        establishment.type = RecordType.ESTABLISHMENT;
+        List<String> parentIds = nonEmptyParents(fatherId, motherId);
+        database.runInTransaction(() -> {
+            ProfileDao profileDao = database.profileDao();
+            RecordDao recordDao = database.recordDao();
+            profileDao.insertProfile(profile);
+            validateParents(profile.id, parentIds);
+            validateParentGenders(fatherId, motherId);
+            replaceCustomFields(profileDao, profile.id, customFields);
+            replaceParents(profileDao, profile.id, fatherId, motherId);
+            recordDao.insertRecord(establishment);
+            replaceRecordFields(recordDao, establishment.id, establishmentFields);
+            replaceRecordImages(recordDao, establishment.id, establishmentImages);
+            replaceRoutines(database.routineDao(), profile.id, routines);
+        });
+        return profile.id;
+    }
+
+    public String updateProfileSync(
+            ProfileEntity profile,
+            List<ProfileCustomFieldEntity> customFields,
+            String fatherId,
+            String motherId,
+            List<RoutineEntity> routines
+    ) {
+        List<String> parentIds = nonEmptyParents(fatherId, motherId);
+        validateParents(profile.id, parentIds);
+        validateParentGenders(fatherId, motherId);
+        profile.id = IdUtil.normalizeId(profile.id);
+        profile.updatedAt = System.currentTimeMillis();
+        ProfileDao profileDao = database.profileDao();
+        ProfileEntity previous = profileDao.getById(profile.id);
+        database.runInTransaction(() -> {
+            profileDao.updateProfile(profile);
+            applyGenderRelationCleanup(profileDao, profile.id, previous == null ? null : previous.gender, profile.gender);
+            replaceCustomFields(profileDao, profile.id, customFields);
+            replaceParents(profileDao, profile.id, fatherId, motherId);
+            replaceRoutines(database.routineDao(), profile.id, routines);
+        });
+        return profile.id;
+    }
+
+    public void deleteProfileSync(String profileId) {
+        database.profileDao().deleteById(IdUtil.normalizeId(profileId));
+    }
+
+    public String saveRecordSync(
+            RecordEntity record,
+            List<RecordFieldEntity> fields,
+            List<RecordImageEntity> images
+    ) {
+        validateRecord(record);
+        if (record.id == null || record.id.trim().isEmpty()) {
+            record.id = IdUtil.randomId();
+        } else {
+            record.id = IdUtil.normalizeId(record.id);
+        }
+        database.runInTransaction(() -> {
+            RecordDao recordDao = database.recordDao();
+            ProfileDao profileDao = database.profileDao();
+            if (recordDao.getById(record.id) == null) {
+                recordDao.insertRecord(record);
+            } else {
+                recordDao.updateRecord(record);
+            }
+            replaceRecordFields(recordDao, record.id, fields);
+            replaceRecordImages(recordDao, record.id, images);
+            syncArchiveStatus(profileDao, recordDao, record.profileId);
+        });
+        return record.id;
+    }
+
+    public void deleteRecordSync(String recordId) {
+        RecordDao recordDao = database.recordDao();
+        RecordEntity record = recordDao.getById(IdUtil.normalizeId(recordId));
+        if (record == null) {
+            return;
+        }
+        if (RecordType.ESTABLISHMENT.equals(record.type)) {
+            throw new IllegalStateException("Establishment record cannot be deleted alone.");
+        }
+        recordDao.deleteById(record.id);
+        syncArchiveStatus(database.profileDao(), recordDao, record.profileId);
+    }
+
+    public KeeperInfo getKeeperInfoSync() {
+        return KeeperInfoManager.load(context);
+    }
+
+    public void saveKeeperInfoSync(KeeperInfo info) {
+        KeeperInfoManager.save(context, info);
+    }
+
     public void getAncestorIds(String profileId, Async.Result<List<String>> callback) {
         Async.run(() -> {
             try {
@@ -659,6 +778,73 @@ public class PetRepository {
                 Async.ui(() -> callback.onError(t));
             }
         });
+    }
+
+    public void importBundleSync(ExportBundle bundle) {
+        if (bundle == null) {
+            throw new IllegalArgumentException("Empty bundle.");
+        }
+        database.runInTransaction(() -> {
+            ProfileDao profileDao = database.profileDao();
+            RecordDao recordDao = database.recordDao();
+            Set<String> profileIds = new HashSet<>();
+            for (ProfileEntity profile : bundle.profiles) {
+                profile.id = IdUtil.normalizeId(profile.id);
+                profileIds.add(profile.id);
+            }
+            for (String profileId : profileIds) {
+                profileDao.deleteById(profileId);
+            }
+            for (ProfileEntity profile : bundle.profiles) {
+                profileDao.insertProfile(profile);
+            }
+            for (ProfileCustomFieldEntity field : bundle.customFields) {
+                field.profileId = IdUtil.normalizeId(field.profileId);
+            }
+            if (!bundle.customFields.isEmpty()) {
+                profileDao.insertCustomFields(bundle.customFields);
+            }
+            for (ProfileParentCrossRef link : bundle.parentLinks) {
+                link.childId = IdUtil.normalizeId(link.childId);
+                link.parentId = IdUtil.normalizeId(link.parentId);
+            }
+            if (!bundle.parentLinks.isEmpty()) {
+                profileDao.insertParents(bundle.parentLinks);
+            }
+            for (RecordEntity record : bundle.records) {
+                record.id = IdUtil.normalizeId(record.id);
+                record.profileId = IdUtil.normalizeId(record.profileId);
+            }
+            if (!bundle.records.isEmpty()) {
+                recordDao.insertRecords(bundle.records);
+            }
+            for (RecordFieldEntity field : bundle.recordFields) {
+                field.recordId = IdUtil.normalizeId(field.recordId);
+            }
+            if (!bundle.recordFields.isEmpty()) {
+                recordDao.insertFields(bundle.recordFields);
+            }
+            for (RecordImageEntity image : bundle.recordImages) {
+                image.id = IdUtil.normalizeId(image.id);
+                image.recordId = IdUtil.normalizeId(image.recordId);
+            }
+            if (!bundle.recordImages.isEmpty()) {
+                recordDao.insertImages(bundle.recordImages);
+            }
+            for (RoutineEntity routine : bundle.routines) {
+                routine.id = IdUtil.normalizeId(routine.id);
+                routine.profileId = IdUtil.normalizeId(routine.profileId);
+            }
+            if (!bundle.routines.isEmpty()) {
+                database.routineDao().insertAll(bundle.routines);
+            }
+            for (String profileId : profileIds) {
+                syncArchiveStatus(profileDao, recordDao, profileId);
+            }
+        });
+        if (bundle.keeperInfo != null) {
+            KeeperInfoManager.save(context, bundle.keeperInfo);
+        }
     }
 
     public void applyOutgoingTransfer(String profileId, KeeperInfo receiverInfo, Async.EmptyResult callback) {

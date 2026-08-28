@@ -1,7 +1,12 @@
 package io.github.jaffe2718.petprofile.ui;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -29,6 +34,7 @@ import io.github.jaffe2718.petprofile.data.LanTransferPayload;
 import io.github.jaffe2718.petprofile.data.ProfileDetails;
 import io.github.jaffe2718.petprofile.data.entity.RecordEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
+import io.github.jaffe2718.petprofile.mcp.McpServer;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.CardShareManager;
@@ -48,6 +54,12 @@ import java.util.HashMap;
 public class RecordListActivity extends AppCompatActivity {
     public static final String EXTRA_PROFILE_ID = "profile_id";
 
+    private final BroadcastReceiver dataChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            reload();
+        }
+    };
     private PetRepository repository;
     private String profileId;
     private RecordAdapter adapter;
@@ -150,6 +162,27 @@ public class RecordListActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         reload();
+    }
+
+    @Override
+    @SuppressLint("UnprotectedBroadcastReceiver")
+    protected void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter(McpServer.ACTION_DATA_CHANGED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(dataChangeReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(dataChangeReceiver, filter);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        try {
+            unregisterReceiver(dataChangeReceiver);
+        } catch (Throwable ignored) {
+        }
+        super.onStop();
     }
 
     private void reload() {

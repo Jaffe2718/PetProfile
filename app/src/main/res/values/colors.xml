@@ -26,4 +26,16 @@
     <color name="button_soft_text">#1D2A23</color>
     <color name="button_soft_bg_deep">#D6E5DC</color>
     <color name="button_soft_stroke_deep">#BFD2C7</color>
+
+    <!-- iOS-inspired palette for the MCP dialog -->
+    <color name="ios_grouped_bg">#F2F2F7</color>
+    <color name="ios_surface">#FFFFFF</color>
+    <color name="ios_label">#1C1C1E</color>
+    <color name="ios_label_secondary">#8A8A8E</color>
+    <color name="ios_system_blue">#0A84FF</color>
+    <color name="ios_system_blue_soft">#E7F1FF</color>
+    <color name="ios_separator">#E5E5EA</color>
+    <color name="ios_gray_button">#F2F2F7</color>
+    <color name="ios_gray_button_text">#1C1C1E</color>
+    <color name="ios_green">#34C759</color>
 </resources>

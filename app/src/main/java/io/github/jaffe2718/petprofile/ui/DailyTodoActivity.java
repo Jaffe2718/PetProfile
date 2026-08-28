@@ -1,8 +1,14 @@
 package io.github.jaffe2718.petprofile.ui;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -48,6 +54,7 @@ import io.github.jaffe2718.petprofile.data.AppDatabase;
 import io.github.jaffe2718.petprofile.data.entity.ProfileCustomFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.ProfileEntity;
 import io.github.jaffe2718.petprofile.data.entity.RoutineEntity;
+import io.github.jaffe2718.petprofile.mcp.McpServer;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.RoutineNotifier;
 import io.github.jaffe2718.petprofile.util.TaxonomyUtil;
@@ -62,6 +69,12 @@ public class DailyTodoActivity extends AppCompatActivity {
 
     private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm:ss", Locale.US);
 
+    private final BroadcastReceiver dataChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            loadTodos();
+        }
+    };
     private final List<TodoItem> allItems = new ArrayList<>();
     private String searchQuery = "";
     private int statusFilter = STATUS_ALL;
@@ -291,6 +304,27 @@ public class DailyTodoActivity extends AppCompatActivity {
         if (allItems.isEmpty()) {
             loadTodos();
         }
+    }
+
+    @Override
+    @SuppressLint("UnprotectedBroadcastReceiver")
+    protected void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter(McpServer.ACTION_DATA_CHANGED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(dataChangeReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(dataChangeReceiver, filter);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        try {
+            unregisterReceiver(dataChangeReceiver);
+        } catch (Throwable ignored) {
+        }
+        super.onStop();
     }
 
     private void applyFilter() {

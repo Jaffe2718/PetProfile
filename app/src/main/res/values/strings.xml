@@ -179,4 +179,18 @@
     <string name="action_search">搜索</string>
     <string name="map_search_no_result">未找到该地址</string>
     <string name="map_search_failed">地址搜索失败</string>
+
+    <!-- MCP -->
+    <string name="mcp_title">MCP</string>
+    <string name="mcp_subtitle">局域网 MCP 服务</string>
+    <string name="mcp_about_button">MCP</string>
+    <string name="mcp_enable_label">允许局域网 AI 访问</string>
+    <string name="mcp_url_label">服务地址（连接时填入）</string>
+    <string name="mcp_key_label">授权 Key（Bearer）</string>
+    <string name="mcp_refresh">刷新</string>
+    <string name="mcp_copy">复制</string>
+    <string name="mcp_copied">已复制</string>
+    <string name="mcp_disabled">服务未开启</string>
+    <string name="mcp_description">手机与本机处于同一局域网时，将上面的地址与授权 Key 配置到 AI 工具（如 DSH / Claude Code / Cursor）即可读取或修改本应用数据。开启开关后服务才会监听。</string>
+    <string name="mcp_service_running">MCP 服务运行中 · %1$s</string>
 </resources>

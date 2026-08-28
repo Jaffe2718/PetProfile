@@ -1,9 +1,20 @@
 package io.github.jaffe2718.petprofile.ui;
 
 import android.Manifest;
-import android.content.pm.PackageManager;
+import android.annotation.SuppressLint;
+import android.app.Dialog;
+import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -11,6 +22,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -29,12 +42,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
 import io.github.jaffe2718.petprofile.data.KeeperInfo;
 import io.github.jaffe2718.petprofile.data.ProfileDetails;
 import io.github.jaffe2718.petprofile.data.entity.ProfileCustomFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.ProfileEntity;
+import io.github.jaffe2718.petprofile.mcp.McpServer;
+import io.github.jaffe2718.petprofile.mcp.McpService;
+import io.github.jaffe2718.petprofile.mcp.McpTokenManager;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.BackupManager;
@@ -53,6 +70,14 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_EXPORT = 5101;
     private static final int REQUEST_IMPORT = 5102;
     private static final int REQUEST_KEEPER_MAP = 5103;
+    private static final String MCP_PREFS = "pet_profile_mcp";
+    private static final String MCP_ENABLED = "mcp_enabled";
+    private final BroadcastReceiver dataChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            reload();
+        }
+    };
     private PetRepository repository;
     private List<ProfileDetails> allDetails = new ArrayList<>();
     private List<ProfileDetails> filteredDetails = new ArrayList<>();
@@ -76,6 +101,11 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean listMode = true;
     private ProfileFilterDialog.FilterState activeFilter = new ProfileFilterDialog.FilterState();
+
+    private boolean isMcpEnabled() {
+        SharedPreferences prefs = getSharedPreferences(MCP_PREFS, MODE_PRIVATE);
+        return prefs.getBoolean(MCP_ENABLED, false);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,6 +225,38 @@ public class MainActivity extends AppCompatActivity {
         RoutineScheduler.scheduleAll(this);
         RoutineScheduler.scheduleDailyRefresh(this);
         RoutineNotifier.sync(this);
+        if (isMcpEnabled() && !McpServer.get(this).isRunning()) {
+            McpService.start(this);
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        registerDataChangeReceiver();
+    }
+
+    @Override
+    protected void onStop() {
+        unregisterDataChangeReceiver();
+        super.onStop();
+    }
+
+    @SuppressLint("UnprotectedBroadcastReceiver")
+    private void registerDataChangeReceiver() {
+        IntentFilter filter = new IntentFilter(McpServer.ACTION_DATA_CHANGED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(dataChangeReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(dataChangeReceiver, filter);
+        }
+    }
+
+    private void unregisterDataChangeReceiver() {
+        try {
+            unregisterReceiver(dataChangeReceiver);
+        } catch (Throwable ignored) {
+        }
     }
 
     private void showFilterDialog() {
@@ -493,7 +555,7 @@ public class MainActivity extends AppCompatActivity {
             versionName = "0.1.0";
         }
         new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.action_about)
+                .setCustomTitle(buildAboutTitle())
                 .setMessage(getString(R.string.about_version, versionName)
                         + "\n\n" + getString(R.string.about_message))
                 .setPositiveButton(R.string.about_repository, (dialog, which) ->
@@ -502,6 +564,83 @@ public class MainActivity extends AppCompatActivity {
                         openUrl("https://github.com/Jaffe2718/PetProfile/issues"))
                 .setNegativeButton(R.string.action_cancel, null)
                 .show();
+    }
+
+    private View buildAboutTitle() {
+        View titleView = getLayoutInflater().inflate(R.layout.view_about_title, null);
+        ImageButton mcpButton = titleView.findViewById(R.id.aboutMcpButton);
+        mcpButton.setOnClickListener(v -> showMcpDialog());
+        return titleView;
+    }
+
+    private Dialog mcpDialog;
+
+    private void showMcpDialog() {
+        if (mcpDialog != null && mcpDialog.isShowing()) {
+            return;
+        }
+        View view = getLayoutInflater().inflate(R.layout.dialog_mcp, null);
+        Dialog dialog = new Dialog(this);
+        dialog.setContentView(view);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setLayout((int) (getResources().getDisplayMetrics().widthPixels * 0.9),
+                    WindowManager.LayoutParams.WRAP_CONTENT);
+        }
+
+        MaterialSwitch mcpSwitch = view.findViewById(R.id.mcpSwitch);
+        TextView urlText = view.findViewById(R.id.mcpUrlText);
+        TextView keyText = view.findViewById(R.id.mcpKeyText);
+        ImageButton refreshButton = view.findViewById(R.id.mcpRefreshButton);
+        ImageButton copyButton = view.findViewById(R.id.mcpCopyButton);
+        ImageButton urlCopyButton = view.findViewById(R.id.mcpUrlCopyButton);
+
+        McpServer server = McpServer.get(this);
+        mcpSwitch.setChecked(server.isRunning());
+        bindMcpFields(server, urlText, keyText);
+
+        mcpSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            getSharedPreferences(MCP_PREFS, MODE_PRIVATE).edit().putBoolean(MCP_ENABLED, isChecked).apply();
+            if (isChecked) {
+                McpService.start(this);
+            } else {
+                McpService.stop(this);
+            }
+            bindMcpFields(McpServer.get(this), urlText, keyText);
+        });
+
+        refreshButton.setOnClickListener(v -> {
+            McpTokenManager.refreshToken(this);
+            keyText.setText(McpTokenManager.getToken(this));
+            Toast.makeText(this, R.string.mcp_refresh, Toast.LENGTH_SHORT).show();
+        });
+
+        copyButton.setOnClickListener(v -> {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("PetProfile MCP token", keyText.getText().toString());
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(this, R.string.mcp_copied, Toast.LENGTH_SHORT).show();
+        });
+
+        urlCopyButton.setOnClickListener(v -> {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("PetProfile MCP URL", urlText.getText().toString());
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(this, R.string.mcp_copied, Toast.LENGTH_SHORT).show();
+        });
+
+        mcpDialog = dialog;
+        dialog.show();
+    }
+
+    private void bindMcpFields(McpServer server, TextView urlText, TextView keyText) {
+        keyText.setText(server.getAuthToken());
+        if (server.isRunning()) {
+            urlText.setText(server.getUrl());
+        } else {
+            urlText.setText(getString(R.string.mcp_disabled));
+        }
     }
 
     private void openUrl(String url) {
