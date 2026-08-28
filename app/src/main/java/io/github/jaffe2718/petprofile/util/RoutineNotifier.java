@@ -53,12 +53,10 @@ public final class RoutineNotifier {
             ensureChannel(context);
             if (pending.isEmpty()) {
                 cancelSummary(context);
-                RoutineScheduler.cancelRepost(context);
             } else {
                 postChildren(context, pending);
                 NotificationManagerCompat.from(context).notify(SUMMARY_ID,
                         buildSummary(context, pending));
-                RoutineScheduler.scheduleRepost(context);
             }
         } catch (Throwable ignored) {
         }
@@ -151,7 +149,8 @@ public final class RoutineNotifier {
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setStyle(style)
-                .setContentIntent(contentIntent(context, SUMMARY_ID));
+                .setContentIntent(contentIntent(context, SUMMARY_ID))
+                .setDeleteIntent(deleteRepostIntent(context, SUMMARY_ID));
         return builder.build();
     }
 
@@ -177,7 +176,8 @@ public final class RoutineNotifier {
                 .setAutoCancel(false)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setContentIntent(contentIntent(context, id));
+                .setContentIntent(contentIntent(context, id))
+                .setDeleteIntent(deleteRepostIntent(context, id));
         if (!body.isEmpty()) {
             builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
         }
@@ -199,6 +199,17 @@ public final class RoutineNotifier {
         Intent intent = new Intent(context, RoutineCompleteReceiver.class);
         intent.putExtra(RoutineCompleteReceiver.EXTRA_ROUTINE_ID, routineId);
         int requestCode = ("complete_" + routineId).hashCode();
+        return PendingIntent.getBroadcast(context, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /**
+     * Event-driven re-post: when the user actually swipes a routine notification away, Android
+     * fires this delete intent and {@link io.github.jaffe2718.petprofile.ui.RoutineRepostReceiver}
+     * re-runs the reconciliation (re-posting that reminder) instead of polling every minute.
+     */
+    private static PendingIntent deleteRepostIntent(Context context, int requestCode) {
+        Intent intent = new Intent(context, io.github.jaffe2718.petprofile.ui.RoutineRepostReceiver.class);
         return PendingIntent.getBroadcast(context, requestCode, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }

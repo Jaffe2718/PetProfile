@@ -80,43 +80,6 @@ public final class RoutineScheduler {
                 AlarmManager.INTERVAL_DAY, pending);
     }
 
-    private static final long REPOST_INTERVAL = 60_000L;
-
-    /** Re-arms a one-shot re-post so that a swiped notification comes back within ~a minute. */
-    public static void scheduleRepost(Context context) {
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null) {
-            return;
-        }
-        PendingIntent pending = repostPendingIntent(context);
-        long trigger = System.currentTimeMillis() + REPOST_INTERVAL;
-        if (canScheduleExact(alarmManager)) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending);
-        } else {
-            Intent show = new Intent(context, io.github.jaffe2718.petprofile.ui.MainActivity.class);
-            PendingIntent showIntent = PendingIntent.getActivity(context, "routine_repost_show".hashCode(), show,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(trigger, showIntent);
-            alarmManager.setAlarmClock(info, pending);
-        }
-    }
-
-    public static void cancelRepost(Context context) {
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null) {
-            return;
-        }
-        PendingIntent pending = repostPendingIntent(context);
-        alarmManager.cancel(pending);
-        pending.cancel();
-    }
-
-    private static PendingIntent repostPendingIntent(Context context) {
-        Intent intent = new Intent(context, io.github.jaffe2718.petprofile.ui.RoutineRepostReceiver.class);
-        return PendingIntent.getBroadcast(context, "routine_repost".hashCode(), intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    }
-
     private static PendingIntent dailyRefreshPendingIntent(Context context) {
         Intent intent = new Intent(context, io.github.jaffe2718.petprofile.ui.RoutineDailyResetReceiver.class);
         return PendingIntent.getBroadcast(context, "routine_daily_reset".hashCode(), intent,
