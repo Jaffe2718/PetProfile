@@ -114,23 +114,27 @@ public final class McpToolRegistry {
                 this::getAppVersion));
 
         register(writeTool("create_profile",
-                "Create a new profile with an establishment record.",
+                "Create a new profile with an establishment record. For the avatar, base64-encode the file with a short local script (e.g. base64 -w0) and pass avatarData (with avatarExtension), rather than inlining large raw payloads in the conversation.",
                 obj("taxonomy", obj("kingdom", str(), "phylum", str(), "taxClass", str(),
                         "taxOrder", str(), "family", str(), "genus", str(), "species", str(), "subspecies", str()),
                         "gender", str("MALE/FEMALE/UNKNOWN"),
                         "avatarUri", str("optional"),
+                        "avatarData", str("base64 image, optional"),
+                        "avatarExtension", str("optional, e.g. png/jpg"),
                         "nickname", str("optional"),
                         "fatherId", str("optional"), "motherId", str("optional"),
                         "establishedAt", num("millis"),
                         "source", str("ESTABLISHMENT reason: BREED/WILD/BUY")),
                 this::createProfile));
         register(writeTool("update_profile",
-                "Update an existing profile. Omitted fields keep their current value.",
+                "Update an existing profile. Omitted fields keep their current value. To change the avatar, pass avatarUri or base64 avatarData (with avatarExtension, produced by a short local script).",
                 obj("profileId", str("required"),
                         "taxonomy", obj("kingdom", str(), "phylum", str(), "taxClass", str(),
                                 "taxOrder", str(), "family", str(), "genus", str(), "species", str(), "subspecies", str()),
                         "gender", str("MALE/FEMALE/UNKNOWN"),
                         "avatarUri", str("optional"),
+                        "avatarData", str("base64 image, optional"),
+                        "avatarExtension", str("optional, e.g. png/jpg"),
                         "nickname", str("optional"),
                         "fatherId", str("optional"), "motherId", str("optional")),
                 this::updateProfile));
@@ -149,7 +153,7 @@ public final class McpToolRegistry {
                         "fields", arr() ),
                 this::setProfileCustomFields));
         register(writeTool("create_record",
-                "Create a record (DAILY/TRANSFER/ARCHIVE) on a profile.",
+                "Create a record (DAILY/TRANSFER/ARCHIVE) on a profile. images[] entries are a content/file uri or base64 data (with extension/mimeType); base64-encode local files with a short script and pass data, or embed ![alt](data:image/...;base64,....) in notesMarkdown, instead of inlining huge payloads.",
                 obj("profileId", str("required"),
                         "title", str("required"),
                         "type", str("DAILY, TRANSFER or ARCHIVE"),
@@ -159,17 +163,21 @@ public final class McpToolRegistry {
                         "keeperName", str(),
                         "archiveReason", str(), "transferFromPerson", str(), "transferToPerson", str(),
                         "transferFromPlace", str(), "transferToPlace", str(),
-                        "fields", arr()),
+                        "fields", arr(),
+                        "images", arr()),
                 this::createRecord));
         register(writeTool("update_record",
-                "Update an existing record. Omitted fields keep their current value.",
+                "Update an existing record. Omitted fields keep their current value. images[] can add/replace (imagesMode) or removeImages removes by id (read ids via get_record); base64-encode local files with a short script and pass data, or embed ![alt](data:image/...;base64,....) in notesMarkdown, instead of inlining huge payloads.",
                 obj("recordId", str("required"),
                         "title", str(), "timestamp", num(),
                         "locationName", str(), "latitude", num(), "longitude", num(),
                         "notesMarkdown", str(), "keeperName", str(),
                         "archiveReason", str(), "transferFromPerson", str(), "transferToPerson", str(),
                         "transferFromPlace", str(), "transferToPlace", str(),
-                        "fields", arr()),
+                        "fields", arr(),
+                        "images", arr(),
+                        "imagesMode", str("append or replace (default replace)"),
+                        "removeImages", arr("image ids to remove; read them via get_record")),
                 this::updateRecord));
         register(writeTool("delete_record",
                 "Delete a non-establishment record.",
@@ -208,16 +216,15 @@ public final class McpToolRegistry {
                 "Save the keeper (breeder) nickname and home place.",
                 obj("nickname", str(), "homePlace", str(), "latitude", num(), "longitude", num()),
                 this::saveKeeperInfo));
-        register(writeTool("save_record_images",
-                "Add images (content:/file: URIs) to a record; each is copied into private storage.",
-                obj("recordId", str("required"),
-                        "replace", bool("replace existing images (default true)"),
-                        "images", arr()),
-                this::saveRecordImages));
         register(writeTool("import_zip",
-                "Import a backup ZIP (content:/file: URI) restoring the whole database.",
-                obj("uri", str("required")),
+                "Import a backup ZIP, given by \"uri\" (content:/file:) or \"data\" (base64), restoring the whole database. To import a large local ZIP, base64-encode and POST it with a short script rather than inlining the payload here.",
+                obj("uri", str("optional"), "data", str("base64 ZIP, optional")),
                 this::importZip));
+        register(tool("export_zip",
+                "Export a backup ZIP. Pass targetUri to write it on the device, or omit to receive base64 \"data\". To save the ZIP on the computer without flooding the conversation, have a local script call this endpoint and decode the returned base64 to a file.",
+                obj("profileId", str("optional, single profile tree"),
+                        "targetUri", str("optional, Android path to write to")),
+                this::exportZip));
     }
 
     // ----- MCP list / call -----
@@ -844,7 +851,15 @@ public final class McpToolRegistry {
         profile.subspecies = nz(str(taxonomy, "subspecies"));
         String gender = str(args, "gender");
         profile.gender = gender == null || gender.trim().isEmpty() ? "UNKNOWN" : gender.toUpperCase(java.util.Locale.ROOT);
-        profile.avatarUri = str(args, "avatarUri");
+        String avatarUri = str(args, "avatarUri");
+        String avatarData = str(args, "avatarData");
+        if (avatarData != null && !avatarData.trim().isEmpty()) {
+            String privateUri = decodeImageToPrivate(ctx, avatarData, str(args, "avatarExtension"), null);
+            if (privateUri != null) {
+                avatarUri = privateUri;
+            }
+        }
+        profile.avatarUri = avatarUri;
         profile.updatedAt = System.currentTimeMillis();
 
         List<ProfileCustomFieldEntity> customFields = new ArrayList<>();
@@ -896,6 +911,13 @@ public final class McpToolRegistry {
         }
         if (args.has("avatarUri")) {
             profile.avatarUri = str(args, "avatarUri");
+        }
+        String avatarData = str(args, "avatarData");
+        if (avatarData != null && !avatarData.trim().isEmpty()) {
+            String privateUri = decodeImageToPrivate(ctx, avatarData, str(args, "avatarExtension"), null);
+            if (privateUri != null) {
+                profile.avatarUri = privateUri;
+            }
         }
         List<ProfileCustomFieldEntity> customFields = new ArrayList<>(dao.getCustomFields(id));
         if (args.has("nickname")) {
@@ -967,7 +989,7 @@ public final class McpToolRegistry {
         record.locationName = str(args, "locationName");
         record.latitude = dbl(args, "latitude");
         record.longitude = dbl(args, "longitude");
-        record.notesMarkdown = nz(str(args, "notesMarkdown"));
+        record.notesMarkdown = rewriteMarkdown(ctx, nz(str(args, "notesMarkdown")));
         record.keeperName = str(args, "keeperName");
         record.archiveReason = str(args, "archiveReason");
         record.transferFromPerson = str(args, "transferFromPerson");
@@ -976,7 +998,7 @@ public final class McpToolRegistry {
         record.transferToPlace = str(args, "transferToPlace");
         List<RecordFieldEntity> fields = parseRecordFields(args);
         try {
-            String id = PetRepository.get(ctx).saveRecordSync(record, fields, new ArrayList<>());
+            String id = PetRepository.get(ctx).saveRecordSync(record, fields, buildRecordImages(ctx, args));
             JsonObject result = new JsonObject();
             result.addProperty("id", id);
             return result;
@@ -997,7 +1019,7 @@ public final class McpToolRegistry {
         if (args.has("locationName")) record.locationName = str(args, "locationName");
         if (args.has("latitude")) record.latitude = dbl(args, "latitude");
         if (args.has("longitude")) record.longitude = dbl(args, "longitude");
-        if (args.has("notesMarkdown")) record.notesMarkdown = nz(str(args, "notesMarkdown"));
+        if (args.has("notesMarkdown")) record.notesMarkdown = rewriteMarkdown(ctx, nz(str(args, "notesMarkdown")));
         if (args.has("keeperName")) record.keeperName = str(args, "keeperName");
         if (args.has("archiveReason")) record.archiveReason = str(args, "archiveReason");
         if (args.has("transferFromPerson")) record.transferFromPerson = str(args, "transferFromPerson");
@@ -1005,8 +1027,30 @@ public final class McpToolRegistry {
         if (args.has("transferFromPlace")) record.transferFromPlace = str(args, "transferFromPlace");
         if (args.has("transferToPlace")) record.transferToPlace = str(args, "transferToPlace");
         List<RecordFieldEntity> fields = args.has("fields") ? parseRecordFields(args) : new ArrayList<>(dao.getFields(id));
+        List<RecordImageEntity> images;
+        if (args.has("images")) {
+            List<RecordImageEntity> newImages = buildRecordImages(ctx, args);
+            if ("append".equalsIgnoreCase(str(args, "imagesMode"))) {
+                images = new ArrayList<>(dao.getImages(id));
+                images.addAll(newImages);
+            } else {
+                images = newImages;
+            }
+        } else {
+            images = new ArrayList<>(dao.getImages(id));
+        }
+        JsonElement removeEl = args.get("removeImages");
+        if (removeEl != null && removeEl.isJsonArray()) {
+            java.util.Set<String> removeIds = new java.util.HashSet<>();
+            for (JsonElement r : removeEl.getAsJsonArray()) {
+                if (r.isJsonPrimitive()) {
+                    removeIds.add(r.getAsString());
+                }
+            }
+            images.removeIf(img -> img.id != null && removeIds.contains(img.id));
+        }
         try {
-            String savedId = PetRepository.get(ctx).saveRecordSync(record, fields, new ArrayList<>());
+            String savedId = PetRepository.get(ctx).saveRecordSync(record, fields, images);
             JsonObject result = new JsonObject();
             result.addProperty("id", savedId);
             return result;
@@ -1111,57 +1155,67 @@ public final class McpToolRegistry {
         return result;
     }
 
-    private JsonElement saveRecordImages(JsonObject args, Context ctx) throws McpToolException {
-        String recordId = str(args, "recordId");
-        RecordDao dao = AppDatabase.getInstance(ctx).recordDao();
-        if (recordId == null || recordId.trim().isEmpty() || dao.getById(recordId) == null) {
-            throw new McpToolException("Record not found: " + recordId);
+    /**
+     * Parses the optional {@code images} array of a {@code create_record}/{@code update_record}
+     * call. Each image is either a content/file {@code uri} or base64 {@code data} (with optional
+     * extension/mimeType); base64 bytes are decoded into app-private storage here, while
+     * {@code recordId}/{@code position} are filled in by the repository when the record is saved.
+     */
+    private List<RecordImageEntity> buildRecordImages(Context ctx, JsonObject args) {
+        List<RecordImageEntity> result = new ArrayList<>();
+        JsonElement imagesEl = args == null ? null : args.get("images");
+        if (imagesEl == null || !imagesEl.isJsonArray()) {
+            return result;
         }
-        Boolean replace = bool(args, "replace");
-        if (replace == null || replace) {
-            dao.deleteImages(recordId);
-        }
-        JsonArray imagesArray = new JsonArray();
-        JsonElement imagesEl = args.get("images");
-        if (imagesEl != null && imagesEl.isJsonArray()) {
-            int position = 0;
-            for (JsonElement item : imagesEl.getAsJsonArray()) {
-                if (!item.isJsonObject()) {
-                    continue;
-                }
-                JsonObject img = item.getAsJsonObject();
-                String uri = str(img, "uri");
-                if (uri == null || uri.trim().isEmpty()) {
-                    continue;
-                }
-                String privateUri = ImageStorage.copyToPrivateStorage(ctx, uri);
-                RecordImageEntity entity = new RecordImageEntity();
-                entity.id = IdUtil.randomId();
-                entity.recordId = recordId;
-                entity.uri = privateUri;
-                entity.position = position++;
-                JsonObject j = new JsonObject();
-                j.addProperty("id", entity.id);
-                j.addProperty("uri", privateUri);
-                imagesArray.add(j);
-                java.util.List<RecordImageEntity> single = new ArrayList<>();
-                single.add(entity);
-                dao.insertImages(single);
+        int position = 0;
+        for (JsonElement item : imagesEl.getAsJsonArray()) {
+            if (!item.isJsonObject()) {
+                continue;
             }
+            JsonObject img = item.getAsJsonObject();
+            String uri = str(img, "uri");
+            String data = str(img, "data");
+            String privateUri;
+            if (data != null && !data.trim().isEmpty()) {
+                privateUri = decodeImageToPrivate(ctx, data, str(img, "extension"), str(img, "mimeType"));
+            } else if (uri != null && !uri.trim().isEmpty()) {
+                privateUri = ImageStorage.copyToPrivateStorage(ctx, uri);
+            } else {
+                continue;
+            }
+            if (privateUri == null) {
+                continue;
+            }
+            RecordImageEntity entity = new RecordImageEntity();
+            entity.id = IdUtil.randomId();
+            entity.uri = privateUri;
+            entity.position = position++;
+            result.add(entity);
         }
-        JsonObject result = new JsonObject();
-        result.addProperty("recordId", recordId);
-        result.add("images", imagesArray);
         return result;
     }
 
     private JsonElement importZip(JsonObject args, Context ctx) throws McpToolException {
         String uri = str(args, "uri");
-        if (uri == null || uri.trim().isEmpty()) {
-            throw new McpToolException("uri is required");
-        }
+        String data = str(args, "data");
         try {
-            ExportBundle bundle = BackupManager.readZip(ctx, Uri.parse(uri));
+            ExportBundle bundle;
+            if (data != null && !data.trim().isEmpty()) {
+                byte[] bytes = java.util.Base64.getDecoder().decode(data);
+                java.io.File tmp = new java.io.File(ctx.getFilesDir(), "tmp_import_" + IdUtil.timeBasedId() + ".zip");
+                try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+                    out.write(bytes);
+                }
+                try {
+                    bundle = BackupManager.readZip(ctx, Uri.fromFile(tmp));
+                } finally {
+                    tmp.delete();
+                }
+            } else if (uri != null && !uri.trim().isEmpty()) {
+                bundle = BackupManager.readZip(ctx, Uri.parse(uri));
+            } else {
+                throw new McpToolException("uri or data (base64) is required");
+            }
             PetRepository.get(ctx).importBundleSync(bundle);
             JsonObject result = new JsonObject();
             result.addProperty("imported", true);
@@ -1172,6 +1226,55 @@ public final class McpToolRegistry {
             return result;
         } catch (Exception e) {
             throw new McpToolException("Import failed: " + e.getMessage());
+        }
+    }
+
+    private JsonElement exportZip(JsonObject args, Context ctx) throws McpToolException {
+        String targetUri = str(args, "targetUri");
+        try {
+            ExportBundle bundle;
+            String profileId = str(args, "profileId");
+            if (profileId != null && !profileId.trim().isEmpty()) {
+                bundle = PetRepository.get(ctx).exportSingleProfileSync(profileId);
+            } else {
+                bundle = PetRepository.get(ctx).exportAllSync();
+            }
+            byte[] zipBytes = BackupManager.createZipBytes(ctx, bundle);
+            JsonObject result = new JsonObject();
+            result.addProperty("size", zipBytes.length);
+            if (targetUri != null && !targetUri.trim().isEmpty()) {
+                BackupManager.exportZip(ctx, bundle, Uri.parse(targetUri));
+                result.addProperty("writtenTo", targetUri);
+            } else {
+                result.addProperty("data", java.util.Base64.getEncoder().encodeToString(zipBytes));
+                result.addProperty("filename", "pet-profile-backup.zip");
+            }
+            return result;
+        } catch (Exception e) {
+            throw new McpToolException("Export failed: " + e.getMessage());
+        }
+    }
+
+    /** Decodes a base64 image and stores it in app-private storage; returns a file URI or null. */
+    private String decodeImageToPrivate(Context ctx, String base64, String extension, String mimeType) {
+        try {
+            byte[] bytes = java.util.Base64.getDecoder().decode(base64);
+            String ext = extension;
+            if (ext == null || ext.trim().isEmpty()) {
+                ext = ImageStorage.extensionFromMime(mimeType);
+            }
+            return ImageStorage.saveBytes(ctx, bytes, ext);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /** Rewrites inline base64 images in Markdown into private file:// URIs (storing the bytes). */
+    private String rewriteMarkdown(Context ctx, String markdown) {
+        try {
+            return ImageStorage.rewriteMarkdownBase64Images(ctx, markdown);
+        } catch (Exception ignored) {
+            return markdown;
         }
     }
 

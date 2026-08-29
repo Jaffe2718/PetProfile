@@ -170,7 +170,9 @@ The server exposes these tools over JSON-RPC (`initialize` / `tools/list` / `too
 
 **Read** — `list_profiles`, `search_profiles`, `get_profile`, `get_profile_family`, `list_records`, `get_record`, `get_record_timeseries`, `list_routines`, `get_daily_todo`, `get_keeper_info`, `get_stats`, `export_json`, `get_app_version`.
 
-**Write** — `create_profile`, `update_profile`, `delete_profile`, `set_profile_parents`, `set_profile_custom_fields`, `create_record`, `update_record`, `delete_record`, `create_routine`, `update_routine`, `delete_routine`, `complete_routine`, `save_keeper_info`, `save_record_images`, `import_zip`.
+**Write** — `create_profile`, `update_profile`, `delete_profile`, `set_profile_parents`, `set_profile_custom_fields`, `create_record`, `update_record`, `delete_record`, `create_routine`, `update_routine`, `delete_routine`, `complete_routine`, `save_keeper_info`, `export_zip`, `import_zip`.
+
+Images are handled as part of the profile/record operations rather than a separate import: `create_record` / `update_record` accept an `images` array, and `create_profile` / `update_profile` accept `avatarData`. An image entry can be a content/`file:` `uri` or base64 `data` (with optional `extension` / `mimeType`) and is stored in app-private storage. `update_record` also supports `imagesMode` (`append` / `replace`, default `replace`) to decide whether to add to or replace the existing images, and `removeImages` (image ids, readable via `get_record`) to delete specific images. Markdown notes may embed inline `![alt](data:image/...;base64,....)` images, which are decoded and rewritten to private `file://` URIs. `export_zip` returns base64 `data` (or writes to `targetUri`) and `import_zip` accepts base64 `data` (or a `uri`).
 
 After a successful write, the foreground data screens (profile list, records, daily todo, record detail, chart) reload automatically, while any open dialog is kept.
 

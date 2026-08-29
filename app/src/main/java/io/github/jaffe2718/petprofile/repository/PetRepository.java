@@ -735,6 +735,36 @@ public class PetRepository {
         });
     }
 
+    // --- Synchronous export builders for the LAN MCP tools. ---
+
+    public ExportBundle exportAllSync() {
+        List<ProfileEntity> profiles = database.profileDao().getAllProfilesOldestFirst();
+        Set<String> ids = new HashSet<>();
+        for (ProfileEntity profile : profiles) {
+            ids.add(profile.id);
+        }
+        ExportBundle bundle = exportProfiles(ids);
+        bundle.keeperInfo = KeeperInfoManager.load(context);
+        return bundle;
+    }
+
+    public ExportBundle exportSingleProfileSync(String profileId) {
+        ProfileEntity profile = database.profileDao().getById(IdUtil.normalizeId(profileId));
+        if (profile == null) {
+            throw new IllegalStateException("Profile not found.");
+        }
+        Set<String> ids = new HashSet<>();
+        ids.add(profile.id);
+        ids.addAll(collectAncestors(profile.id));
+        List<String> descendants = collectDescendants(profile.id);
+        ids.addAll(descendants);
+        ExportBundle bundle = exportProfiles(ids);
+        bundle.rootProfileId = profile.id;
+        bundle.descendantIds.addAll(descendants);
+        bundle.keeperInfo = KeeperInfoManager.load(context);
+        return bundle;
+    }
+
     public void importTransferBundle(ExportBundle bundle, Async.EmptyResult callback) {
         Async.run(() -> {
             try {

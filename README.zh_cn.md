@@ -168,7 +168,9 @@ PetProfile 提供一个本地 Model Context Protocol 服务，让同一局域网
 
 **读** —— `list_profiles`、`search_profiles`、`get_profile`、`get_profile_family`、`list_records`、`get_record`、`get_record_timeseries`、`list_routines`、`get_daily_todo`、`get_keeper_info`、`get_stats`、`export_json`、`get_app_version`。
 
-**写** —— `create_profile`、`update_profile`、`delete_profile`、`set_profile_parents`、`set_profile_custom_fields`、`create_record`、`update_record`、`delete_record`、`create_routine`、`update_routine`、`delete_routine`、`complete_routine`、`save_keeper_info`、`save_record_images`、`import_zip`。
+**写** —— `create_profile`、`update_profile`、`delete_profile`、`set_profile_parents`、`set_profile_custom_fields`、`create_record`、`update_record`、`delete_record`、`create_routine`、`update_routine`、`delete_routine`、`complete_routine`、`save_keeper_info`、`export_zip`、`import_zip`。
+
+图片随档案/记录操作一起处理，而非单独导入：`create_record`/`update_record` 接受 `images` 数组，`create_profile`/`update_profile` 接受 `avatarData`。单张图片可以给 `uri`（content:/file:）或 base64 `data`（可带 `extension`/`mimeType`），并存入应用私有目录。`update_record` 还能用 `imagesMode`（`append`/`replace`，默认 `replace`）决定追加还是覆盖，用 `removeImages`（数组内填图片 id，通过 `get_record` 读取）删除指定图片。Markdown 支持内联 `![alt](data:image/...;base64,....)` 图片，会自动解码并改写为私有 `file://` URI。`export_zip` 返回 base64 `data`（或写到 `targetUri`），`import_zip` 接受 base64 `data`（或 `uri`）。
 
 写操作成功后，前台数据页（档案列表、记录列表、日常待办、记录详情、图表）会自动刷新，且不会关闭已打开的弹窗。
 
