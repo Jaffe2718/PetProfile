@@ -3,6 +3,7 @@ package io.github.jaffe2718.petprofile.mcp;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -107,6 +108,10 @@ public final class McpToolRegistry {
                 "Export the whole database (or a single profile tree) as JSON for sharing.",
                 obj("profileId", str("optional")),
                 this::exportJson));
+        register(tool("get_app_version",
+                "Get the installed application version (versionName/versionCode) and server info.",
+                obj(),
+                this::getAppVersion));
 
         register(writeTool("create_profile",
                 "Create a new profile with an establishment record.",
@@ -799,6 +804,29 @@ public final class McpToolRegistry {
         return root;
     }
 
+    private JsonElement getAppVersion(JsonObject args, Context ctx) {
+        JsonObject result = new JsonObject();
+        String versionName = "unknown";
+        long versionCode = 0;
+        try {
+            android.content.pm.PackageInfo info = ctx.getPackageManager()
+                    .getPackageInfo(ctx.getPackageName(), 0);
+            versionName = info.versionName == null ? "unknown" : info.versionName;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                versionCode = info.getLongVersionCode();
+            } else {
+                versionCode = info.versionCode;
+            }
+        } catch (Exception ignored) {
+        }
+        result.addProperty("versionName", versionName);
+        result.addProperty("versionCode", versionCode);
+        result.addProperty("serverName", "PetProfile MCP Server");
+        result.addProperty("protocolVersion", "2025-06-18");
+        result.addProperty("toolCount", tools.size());
+        return result;
+    }
+
     // ----- WRITE handlers -----
 
     private JsonElement createProfile(JsonObject args, Context ctx) throws McpToolException {
@@ -1213,8 +1241,9 @@ public final class McpToolRegistry {
             if (field.numericValue == null && fieldJson.has("numberValue")) {
                 field.numericValue = dbl(fieldJson, "numberValue");
             }
-            field.textValue = str(fieldJson, "value");
-            if (field.textValue == null) {
+            boolean isNumberField = FieldType.NUMBER.equals(field.fieldType);
+            field.textValue = isNumberField ? null : str(fieldJson, "value");
+            if (field.textValue == null && !isNumberField) {
                 field.textValue = str(fieldJson, "textValue");
             }
             field.unit = str(fieldJson, "unit");
@@ -1249,8 +1278,9 @@ public final class McpToolRegistry {
             if (field.numericValue == null && fieldJson.has("numberValue")) {
                 field.numericValue = dbl(fieldJson, "numberValue");
             }
-            field.textValue = str(fieldJson, "value");
-            if (field.textValue == null) {
+            boolean isNumberField = FieldType.NUMBER.equals(field.fieldType);
+            field.textValue = isNumberField ? null : str(fieldJson, "value");
+            if (field.textValue == null && !isNumberField) {
                 field.textValue = str(fieldJson, "textValue");
             }
             field.unit = str(fieldJson, "unit");
@@ -1419,7 +1449,7 @@ public final class McpToolRegistry {
         if (field.numericValue != null) {
             result.addProperty("value", field.numericValue);
         }
-        if (field.textValue != null) {
+        if (field.textValue != null && !FieldType.NUMBER.equals(field.fieldType)) {
             result.addProperty("textValue", field.textValue);
         }
         if (field.unit != null) {

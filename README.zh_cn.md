@@ -136,6 +136,44 @@ app/build/outputs/apk/debug/app-debug.apk
 - `POST_NOTIFICATIONS` —— 日常提醒。
 - `RECEIVE_BOOT_COMPLETED` —— 系统重启后重新调度提醒。
 
+## MCP（Model Context Protocol）
+
+PetProfile 提供一个本地 Model Context Protocol 服务，让同一局域网的 AI Agent 可以读取和管理 App 数据。
+
+### 开启
+
+1. 在 App 内打开 **关于 → MCP**。
+2. 打开**开关**。这会启动一个前台服务，让 MCP 服务在后台、锁屏下持续运行（是否能在“划退”后存活取决于机型/后台白名单）。
+3. 从弹窗复制 **服务地址**（`http://<手机IP>:18999/petprofile`）与**授权 Key**。
+
+### 连接 Agent
+
+用 `streamable-http` 类型配置 MCP 客户端：
+
+```json
+{
+  "type": "streamable-http",
+  "url": "http://x.x.x.x:18999/petprofile",
+  "headers": {
+    "Authorization": "Bearer <你的Key>"
+  }
+}
+```
+
+要求：手机与 Agent 处于同一局域网，且 App 保持运行（开关开启）。Key 是自动生成的，用 App 里显示的那个（点击“刷新”会更换）。
+
+### 工具
+
+服务通过 JSON-RPC（`initialize` / `tools/list` / `tools/call`）暴露以下工具：
+
+**读** —— `list_profiles`、`search_profiles`、`get_profile`、`get_profile_family`、`list_records`、`get_record`、`get_record_timeseries`、`list_routines`、`get_daily_todo`、`get_keeper_info`、`get_stats`、`export_json`、`get_app_version`。
+
+**写** —— `create_profile`、`update_profile`、`delete_profile`、`set_profile_parents`、`set_profile_custom_fields`、`create_record`、`update_record`、`delete_record`、`create_routine`、`update_routine`、`delete_routine`、`complete_routine`、`save_keeper_info`、`save_record_images`、`import_zip`。
+
+写操作成功后，前台数据页（档案列表、记录列表、日常待办、记录详情、图表）会自动刷新，且不会关闭已打开的弹窗。
+
+> 注意：`import_zip` 会整体替换数据库（破坏性）。
+
 ## 数据与图片
 
 - 所有数据通过 Room 保存在本地数据库中。

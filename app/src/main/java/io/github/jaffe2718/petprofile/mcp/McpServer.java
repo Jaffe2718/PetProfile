@@ -29,7 +29,7 @@ import io.github.jaffe2718.petprofile.util.NetworkUtil;
 public final class McpServer {
     private static final String PROTOCOL_VERSION = "2025-06-18";
     private static final String SERVER_NAME = "PetProfile MCP Server";
-    private static final String SERVER_VERSION = "0.2.4";
+    private static final String SERVER_VERSION = "0.2.5";
     /** Package-scoped broadcast sent after a successful MCP write so foreground screens refresh. */
     public static final String ACTION_DATA_CHANGED = "io.github.jaffe2718.petprofile.action.DATA_CHANGED";
     private static final int DEFAULT_PORT = 18999;

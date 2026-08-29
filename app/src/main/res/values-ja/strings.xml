@@ -179,4 +179,18 @@
     <string name="action_search">検索</string>
     <string name="map_search_no_result">住所が見つかりません</string>
     <string name="map_search_failed">住所検索に失敗しました</string>
+
+    <!-- MCP -->
+    <string name="mcp_title">MCP</string>
+    <string name="mcp_subtitle">LAN MCP サーバー</string>
+    <string name="mcp_about_button">MCP</string>
+    <string name="mcp_enable_label">LAN の AI アクセスを許可</string>
+    <string name="mcp_url_label">サーバー URL（接続時に記入）</string>
+    <string name="mcp_key_label">認証キー（Bearer）</string>
+    <string name="mcp_refresh">更新</string>
+    <string name="mcp_copy">コピー</string>
+    <string name="mcp_copied">コピーしました</string>
+    <string name="mcp_disabled">サービスはオフです</string>
+    <string name="mcp_description">スマホとこのデバイスが同じ LAN にある場合、上記の URL と認証キーを AI ツール（DSH / Claude Code / Cursor など）に設定すると、このアプリのデータを読み書きできます。スイッチがオンの間だけサーバーが待ち受けます。</string>
+    <string name="mcp_service_running">MCP サーバー稼働中 · %1$s</string>
 </resources>

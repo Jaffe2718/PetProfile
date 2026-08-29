@@ -179,4 +179,18 @@
     <string name="action_search">Search</string>
     <string name="map_search_no_result">Address not found</string>
     <string name="map_search_failed">Address search failed</string>
+
+    <!-- MCP -->
+    <string name="mcp_title">MCP</string>
+    <string name="mcp_subtitle">LAN MCP server</string>
+    <string name="mcp_about_button">MCP</string>
+    <string name="mcp_enable_label">Allow LAN AI access</string>
+    <string name="mcp_url_label">Server URL (fill in when connecting)</string>
+    <string name="mcp_key_label">Authorization Key (Bearer)</string>
+    <string name="mcp_refresh">Refresh</string>
+    <string name="mcp_copy">Copy</string>
+    <string name="mcp_copied">Copied</string>
+    <string name="mcp_disabled">Server is off</string>
+    <string name="mcp_description">"When the phone and this device are on the same LAN, set the URL and Authorization Key above in an AI tool (such as DSH / Claude Code / Cursor) to read or modify this app's data. The server only listens while the switch is on."</string>
+    <string name="mcp_service_running">MCP server running · %1$s</string>
 </resources>

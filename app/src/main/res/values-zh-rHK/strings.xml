@@ -179,4 +179,18 @@
     <string name="action_search">搜尋</string>
     <string name="map_search_no_result">找不到該地址</string>
     <string name="map_search_failed">地址搜尋失敗</string>
+
+    <!-- MCP -->
+    <string name="mcp_title">MCP</string>
+    <string name="mcp_subtitle">區域網路 MCP 服務</string>
+    <string name="mcp_about_button">MCP</string>
+    <string name="mcp_enable_label">允許區域網路 AI 存取</string>
+    <string name="mcp_url_label">服務位址（連線時填入）</string>
+    <string name="mcp_key_label">授權 Key（Bearer）</string>
+    <string name="mcp_refresh">重新整理</string>
+    <string name="mcp_copy">複製</string>
+    <string name="mcp_copied">已複製</string>
+    <string name="mcp_disabled">服務未啟動</string>
+    <string name="mcp_description">當手機與本機位於同一區域網路時，可將上方位址與授權 Key 設定至 AI 工具（如 DSH / Claude Code / Cursor），即可讀取或修改本應用程式的資料。開啟開關後服務才會監聽。</string>
+    <string name="mcp_service_running">MCP 服務執行中 · %1$s</string>
 </resources>

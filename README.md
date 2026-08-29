@@ -138,6 +138,44 @@ Project configuration:
 - `POST_NOTIFICATIONS` — routine reminders.
 - `RECEIVE_BOOT_COMPLETED` — re-schedule reminders after a reboot.
 
+## MCP (Model Context Protocol)
+
+Pet Profile exposes a local Model Context Protocol server so an AI agent on the same LAN can read and manage the app's data.
+
+### Enable
+
+1. In the app, open **About → MCP**.
+2. Turn the **enable switch** on. This starts a foreground service that keeps the MCP server alive in the background, on the lock screen, and (on devices where the process survives) after the app is swiped away.
+3. Copy the **URL** (`http://<phone-ip>:18999/petprofile`) and the **Authorization key** from the dialog.
+
+### Connect an agent
+
+Configure the agent's MCP client with a `streamable-http` server:
+
+```json
+{
+  "type": "streamable-http",
+  "url": "http://x.x.x.x:18999/petprofile",
+  "headers": {
+    "Authorization": "Bearer <your-key>"
+  }
+}
+```
+
+Requirements: the phone and the agent must be on the same network, and the app must be running with the switch on. The key is auto-generated; use the one shown in the app (it changes if you press **Refresh**).
+
+### Tools
+
+The server exposes these tools over JSON-RPC (`initialize` / `tools/list` / `tools/call`):
+
+**Read** — `list_profiles`, `search_profiles`, `get_profile`, `get_profile_family`, `list_records`, `get_record`, `get_record_timeseries`, `list_routines`, `get_daily_todo`, `get_keeper_info`, `get_stats`, `export_json`, `get_app_version`.
+
+**Write** — `create_profile`, `update_profile`, `delete_profile`, `set_profile_parents`, `set_profile_custom_fields`, `create_record`, `update_record`, `delete_record`, `create_routine`, `update_routine`, `delete_routine`, `complete_routine`, `save_keeper_info`, `save_record_images`, `import_zip`.
+
+After a successful write, the foreground data screens (profile list, records, daily todo, record detail, chart) reload automatically, while any open dialog is kept.
+
+> Note: `import_zip` replaces the whole database (destructive).
+
 ## Data & images
 
 - Everything is stored locally in a Room database.
