@@ -28,10 +28,12 @@ import io.github.jaffe2718.petprofile.data.entity.RecordFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.RecordImageEntity;
 import io.github.jaffe2718.petprofile.data.entity.RoutineEntity;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
+import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.BackupManager;
 import io.github.jaffe2718.petprofile.util.IdUtil;
 import io.github.jaffe2718.petprofile.util.ImageStorage;
 import io.github.jaffe2718.petprofile.util.KeeperInfoManager;
+import io.github.jaffe2718.petprofile.util.OneDriveBackupManager;
 import io.github.jaffe2718.petprofile.util.RoutineNotifier;
 import io.github.jaffe2718.petprofile.util.RoutineScheduler;
 import io.github.jaffe2718.petprofile.util.RoutineTodoMath;
@@ -225,6 +227,25 @@ public final class McpToolRegistry {
                 obj("profileId", str("optional, single profile tree"),
                         "targetUri", str("optional, Android path to write to")),
                 this::exportZip));
+
+        // OneDrive cloud backup: upload/download require the user to have signed in to OneDrive
+        // on the device (Keeper Info). No login tool is exposed here.
+        register(tool("is_onedrive_connected",
+                "Check whether the user has signed in to OneDrive. If false, ask the user to sign in on the device (饲养者信息 → 登录 OneDrive).",
+                obj(),
+                this::isOneDriveConnected));
+        register(writeTool("upload_to_onedrive",
+                "Back up the whole database to OneDrive. Requires the user to be signed in to OneDrive. Returns immediately; poll get_onedrive_result for the outcome.",
+                obj(),
+                this::uploadOneDrive));
+        register(writeTool("download_onedrive",
+                "Restore the database from the OneDrive backup. Requires the user to be signed in to OneDrive. Returns immediately; poll get_onedrive_result for the outcome.",
+                obj(),
+                this::downloadOneDrive));
+        register(tool("get_onedrive_result",
+                "Get the outcome of the most recent upload_to_onedrive / download_onedrive call.",
+                obj(),
+                this::getOneDriveResult));
     }
 
     // ----- MCP list / call -----
@@ -1253,6 +1274,90 @@ public final class McpToolRegistry {
         } catch (Exception e) {
             throw new McpToolException("Export failed: " + e.getMessage());
         }
+    }
+
+    private JsonElement isOneDriveConnected(JsonObject args, Context ctx) {
+        JsonObject result = new JsonObject();
+        result.addProperty("signedIn", OneDriveBackupManager.isSignedIn(ctx));
+        String account = OneDriveBackupManager.getAccountName(ctx);
+        if (account != null) {
+            result.addProperty("account", account);
+        }
+        return result;
+    }
+
+    private JsonElement uploadOneDrive(JsonObject args, Context ctx) throws McpToolException {
+        requireOneDriveSignedIn(ctx);
+        requireNotBusy();
+        OneDriveBackupManager.setCloudBusy(true);
+        PetRepository.get(ctx).exportAll(new Async.Result<ExportBundle>() {
+            @Override
+            public void onSuccess(ExportBundle bundle) {
+                Async.run(() -> {
+                    try {
+                        byte[] zipBytes = BackupManager.createZipBytes(ctx, bundle);
+                        OneDriveBackupManager.upload(ctx, zipBytes, noop());
+                    } catch (Throwable t) {
+                        OneDriveBackupManager.setCloudBusy(false);
+                        OneDriveBackupManager.setLastResult(t.getMessage());
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                OneDriveBackupManager.setCloudBusy(false);
+                OneDriveBackupManager.setLastResult(error.getMessage());
+            }
+        });
+        JsonObject result = new JsonObject();
+        result.addProperty("status", "started");
+        result.addProperty("message", "上传已开始，调用 get_onedrive_result 查看结果");
+        return result;
+    }
+
+    private JsonElement downloadOneDrive(JsonObject args, Context ctx) throws McpToolException {
+        requireOneDriveSignedIn(ctx);
+        requireNotBusy();
+        OneDriveBackupManager.setCloudBusy(true);
+        OneDriveBackupManager.download(ctx, noop());
+        JsonObject result = new JsonObject();
+        result.addProperty("status", "started");
+        result.addProperty("message", "恢复已开始，调用 get_onedrive_result 查看结果");
+        return result;
+    }
+
+    private void requireNotBusy() throws McpToolException {
+        if (OneDriveBackupManager.isCloudBusy()) {
+            throw new McpToolException("已有上传/下载任务进行中，请稍后重试");
+        }
+    }
+
+    private JsonElement getOneDriveResult(JsonObject args, Context ctx) {
+        JsonObject result = new JsonObject();
+        String r = OneDriveBackupManager.getLastResult();
+        result.addProperty("result", r == null ? "pending" : r);
+        return result;
+    }
+
+    private void requireOneDriveSignedIn(Context ctx) throws McpToolException {
+        if (!OneDriveBackupManager.isSignedIn(ctx)) {
+            throw new McpToolException("未登录 OneDrive，请先在 App「饲养者信息」→「登录 OneDrive」登录");
+        }
+    }
+
+    private OneDriveBackupManager.Callback noop() {
+        return new OneDriveBackupManager.Callback() {
+            @Override
+            public void onSuccess(String message) {
+                OneDriveBackupManager.setCloudBusy(false);
+            }
+
+            @Override
+            public void onError(String message) {
+                OneDriveBackupManager.setCloudBusy(false);
+            }
+        };
     }
 
     /** Decodes a base64 image and stores it in app-private storage; returns a file URI or null. */

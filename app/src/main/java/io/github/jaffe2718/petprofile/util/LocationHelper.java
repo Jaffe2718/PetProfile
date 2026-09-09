@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.content.Intent;
+import android.net.Uri;
 import io.github.jaffe2718.petprofile.ui.MapPickerActivity;
 
 import androidx.core.app.ActivityCompat;
@@ -46,6 +47,17 @@ public final class LocationHelper {
         intent.putExtra(MapPickerActivity.EXTRA_INITIAL_LATITUDE, initialLatitude);
         intent.putExtra(MapPickerActivity.EXTRA_INITIAL_LONGITUDE, initialLongitude);
         activity.startActivityForResult(intent, requestCode);
+    }
+
+    /** Opens the coordinate in the user's default map app (any geo: handler). */
+    public static void openInMap(Context context, double latitude, double longitude) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("geo:" + latitude + "," + longitude + "?q=" + latitude + "," + longitude));
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception ignored) {
+        }
     }
 
     public static double[] lastKnownCoordinates(Activity activity) {

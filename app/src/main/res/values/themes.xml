@@ -16,6 +16,24 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">@color/surface</item>
         <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:actionButtonStyle">@style/Widget.PetProfile.ToolbarButton</item>
+    </style>
+
+    <style name="Widget.PetProfile.ToolbarButton" parent="Widget.AppCompat.ActionButton">
+        <item name="android:minWidth">36dp</item>
+        <item name="android:minHeight">36dp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">4dp</item>
+    </style>
+
+    <style name="MiscItem">
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+        <item name="android:background">@drawable/bg_misc_item</item>
+        <item name="android:padding">22dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
     </style>
 
     <style name="ShapeAppearance.PetProfile.TextField" parent="">

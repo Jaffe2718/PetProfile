@@ -4,7 +4,7 @@
 
 > A local-first Android app for reptile keepers, breeders, and pet shops.
 
-Pet Profile is a local-first Android app that manages animal profiles, individual husbandry records, pedigree (family-tree) charts, numeric visualization, routine-reminder notifications, backup/sharing, and QR-based device-to-device transfer. Everything runs on-device; no account or cloud sync is required, and the network is only used when you need map tiles or a LAN transfer.
+Pet Profile is a local-first Android app that manages animal profiles, individual husbandry records, pedigree (family-tree) charts, numeric visualization, routine-reminder notifications, backup/sharing, and QR-based device-to-device transfer. Everything runs on-device; no account is required, and the network is only used when you need map tiles, a LAN transfer, or an optional OneDrive backup.
 
 The project is written in Java and built with Android Studio and Gradle.
 
@@ -17,7 +17,8 @@ The project is written in Java and built with Android Studio and Gradle.
 - **Routine reminders** — per-profile feeding / watering / cleaning reminders with weekly or one-time schedules, a completion policy (Skip / Retain), and system notifications.
 - **Daily todo** — a dedicated screen listing today's tasks with due/upcoming status, per-pet filters, search, and completion tracking.
 - **Backup & sharing** — ZIP export/import, PNG long-image sharing, and QR + same-LAN transfer of complete profile trees (including ancestors and images).
-- **Keeper info** — a global keeper profile (nickname + home place) that pre-fills transfer and archive metadata.
+- **Cloud backup (OneDrive)** — optional upload/download of the whole database as a ZIP to the signed-in user's own OneDrive (in a private app folder), with Microsoft sign-in done on-device.
+- **Keeper info** — a global keeper profile (nickname + home place) that pre-fills transfer and archive metadata, plus an in-page OneDrive login.
 - **Localization** — Simplified Chinese, Traditional Chinese (Hong Kong), English, and Japanese.
 
 ## Features
@@ -71,9 +72,20 @@ The project is written in Java and built with Android Studio and Gradle.
 - QR + same-LAN transfer: the QR code carries only connection metadata while the full profile tree (including ancestors and images) is streamed over TCP.
 - When transferring, an archive (transferred out) record is added, and ancestor profiles that are not present locally are archived as transferred so bloodlines remain traceable.
 
+### Cloud backup / restore (OneDrive)
+
+The **More** page has **Upload to cloud** / **Sync from cloud** (and the Keeper Info page has the same pair) that back up the whole database as a ZIP to the signed-in user's own OneDrive, and restore it from there.
+
+- Microsoft sign-in uses the authorization-code + PKCE flow on-device (no server, no client secret), so the app does **not** need Google-style OAuth consent verification. You register the app once in Azure (a client ID, a mobile/desktop redirect URI, and the `Files.ReadWrite.AppFolder` delegated scope), then put the client ID in `app/build.gradle` (`def msalClientId = ...`). Users sign in to their own Microsoft account inside the app.
+- The backup is stored in the app's private OneDrive folder (`/me/drive/special/approot`), so it doesn't clutter the user's Drive, and is named `pet-profile-backup.zip`; images are included.
+- While an upload/download is running, the buttons stay disabled (globally, even after leaving the page) and further taps report "syncing, please wait".
+- The **check update** button queries the latest GitHub release (`v{x}.{y}.{z}`) and, if newer than the installed version, offers the APK download from `https://github.com/Jaffe2718/PetProfile/releases/download/v{x}.{y}.{z}/petprofile.apk`.
+
 ### Keeper info
 
 - A global nickname and a home place (map-picked, address + DMS).
+- The **常驻地 (home)** button shows a house icon; single-tap opens the home in a map/navigation app, long-press re-picks the coordinates.
+- The page also hosts the OneDrive login, backup, and restore controls.
 - Used to pre-fill transfer and archive keeper names and locations, and shared through ZIP export/import.
 
 ## Map providers
@@ -99,6 +111,7 @@ Language resources live under:
 - QR generation: ZXing
 - QR scanning: CameraX + ML Kit Barcode Scanning
 - Map tiles: AMap / Google Maps / OpenStreetMap
+- Cloud backup: Microsoft Graph (OneDrive) + authorization-code/PKCE OAuth
 
 ## Build
 
@@ -134,7 +147,7 @@ Project configuration:
 
 - `CAMERA` — scanning transfer QR codes.
 - `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` — map picker and GPS.
-- `INTERNET` — map tiles and LAN transfer.
+- `INTERNET` — map tiles, LAN transfer, check for updates, and OneDrive backup.
 - `POST_NOTIFICATIONS` — routine reminders.
 - `RECEIVE_BOOT_COMPLETED` — re-schedule reminders after a reboot.
 
@@ -172,6 +185,8 @@ The server exposes these tools over JSON-RPC (`initialize` / `tools/list` / `too
 
 **Write** — `create_profile`, `update_profile`, `delete_profile`, `set_profile_parents`, `set_profile_custom_fields`, `create_record`, `update_record`, `delete_record`, `create_routine`, `update_routine`, `delete_routine`, `complete_routine`, `save_keeper_info`, `export_zip`, `import_zip`.
 
+**OneDrive cloud backup** — `is_onedrive_connected`, `upload_to_onedrive`, `download_onedrive`, `get_onedrive_result`. No login tool is exposed: the user must sign in to Microsoft on the device (Keeper Info → 登录 OneDrive). `upload_to_onedrive` / `download_onedrive` return `{"status":"started"}` and the outcome is captured via `get_onedrive_result`.
+
 Images are handled as part of the profile/record operations rather than a separate import: `create_record` / `update_record` accept an `images` array, and `create_profile` / `update_profile` accept `avatarData`. An image entry can be a content/`file:` `uri` or base64 `data` (with optional `extension` / `mimeType`) and is stored in app-private storage. `update_record` also supports `imagesMode` (`append` / `replace`, default `replace`) to decide whether to add to or replace the existing images, and `removeImages` (image ids, readable via `get_record`) to delete specific images. Markdown notes may embed inline `![alt](data:image/...;base64,....)` images, which are decoded and rewritten to private `file://` URIs. `export_zip` returns base64 `data` (or writes to `targetUri`) and `import_zip` accepts base64 `data` (or a `uri`).
 
 After a successful write, the foreground data screens (profile list, records, daily todo, record detail, chart) reload automatically, while any open dialog is kept.
@@ -183,7 +198,7 @@ After a successful write, the foreground data screens (profile list, records, da
 - Everything is stored locally in a Room database.
 - Images are copied into app-private storage (`files/images/`), so records stay intact even if the original photo is removed from the gallery. Markdown image references are rewritten to these stored files.
 - ZIP export packs the related images and restores them to app-private storage on import; unique filenames prevent cross-device collisions.
-- The app is local-first and does not provide cloud sync.
+- The app is local-first. An optional OneDrive backup lets you back up / restore the database to your own OneDrive, but the app works fully offline without it.
 
 ## Repository & feedback
 

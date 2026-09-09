@@ -47,34 +47,34 @@
 
             <ImageButton
                 android:id="@+id/sortButton"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_sort"
-                android:padding="6dp"
+                android:padding="4dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_sort_descending" />
 
             <ImageButton
                 android:id="@+id/filterButton"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_filter"
-                android:padding="6dp"
+                android:padding="4dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_filter_funnel" />
 
             <ImageButton
                 android:id="@+id/modeButton"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/mode_list"
-                android:padding="6dp"
+                android:padding="4dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_mode_list" />
         </LinearLayout>

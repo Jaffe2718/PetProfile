@@ -21,6 +21,7 @@
     <color name="surface_subtle">#F6F8F7</color>
     <color name="text_primary">#1C2621</color>
     <color name="text_secondary">#66706B</color>
+    <color name="text_disabled">#A9B3AD</color>
     <color name="divider">#DCE6E0</color>
     <color name="button_soft_bg">#EAF3ED</color>
     <color name="button_soft_text">#1D2A23</color>

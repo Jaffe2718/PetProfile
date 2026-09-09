@@ -193,4 +193,39 @@
     <string name="mcp_disabled">服務未啟動</string>
     <string name="mcp_description">當手機與本機位於同一區域網路時，可將上方位址與授權 Key 設定至 AI 工具（如 DSH / Claude Code / Cursor），即可讀取或修改本應用程式的資料。開啟開關後服務才會監聽。</string>
     <string name="mcp_service_running">MCP 服務執行中 · %1$s</string>
+
+    <!-- misc / keeper -->
+    <string name="action_more">更多</string>
+    <string name="action_language">語言</string>
+    <string name="action_misc_todo">日常待辦</string>
+    <string name="action_misc_keeper">飼養者資訊</string>
+    <string name="action_misc_export">匯出 ZIP</string>
+    <string name="action_misc_import">匯入 ZIP</string>
+    <string name="action_misc_upload">上傳到雲端</string>
+    <string name="action_misc_syncdown">從雲端同步</string>
+    <string name="action_misc_scan">掃碼匯入</string>
+    <string name="action_misc_language">語言</string>
+    <string name="action_misc_about">關於</string>
+    <string name="action_misc_update">檢查更新</string>
+    <string name="update_latest">已是最新版本</string>
+    <string name="update_error">檢查更新失敗</string>
+    <string name="update_available">發現新版本</string>
+    <string name="update_available_msg">發現新版本 %1$s</string>
+    <string name="update_download">下載</string>
+    <string name="keeper_home_label">常駐地</string>
+    <string name="keeper_nickname_hint">飼養者暱稱</string>
+    <!-- OneDrive -->
+    <string name="onedrive_title">OneDrive 備份</string>
+    <string name="onedrive_login_hint">連接 OneDrive 以便備份（需在 Azure 註冊並填入 client ID）</string>
+    <string name="onedrive_login">登入 OneDrive</string>
+    <string name="onedrive_logout">登出</string>
+    <string name="onedrive_connected">已連接 OneDrive</string>
+    <string name="onedrive_connected_as">已連接 OneDrive：%1$s</string>
+    <string name="onedrive_upload">備份到 OneDrive</string>
+    <string name="onedrive_download">從 OneDrive 復原</string>
+    <string name="onedrive_synced">已同步到 OneDrive</string>
+    <string name="onedrive_restored">已從 OneDrive 復原</string>
+    <string name="onedrive_not_signed_in">尚未登入 Microsoft 帳戶</string>
+    <string name="onedrive_no_client_id">未設定 OneDrive client ID，請在 build.gradle 填 msalClientId</string>
+    <string name="onedrive_busy">正在同步，請稍候</string>
 </resources>

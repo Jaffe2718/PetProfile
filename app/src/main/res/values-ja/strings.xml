@@ -193,4 +193,39 @@
     <string name="mcp_disabled">サービスはオフです</string>
     <string name="mcp_description">スマホとこのデバイスが同じ LAN にある場合、上記の URL と認証キーを AI ツール（DSH / Claude Code / Cursor など）に設定すると、このアプリのデータを読み書きできます。スイッチがオンの間だけサーバーが待ち受けます。</string>
     <string name="mcp_service_running">MCP サーバー稼働中 · %1$s</string>
+
+    <!-- misc / keeper -->
+    <string name="action_more">その他</string>
+    <string name="action_language">言語</string>
+    <string name="action_misc_todo">日常のToDo</string>
+    <string name="action_misc_keeper">飼育者情報</string>
+    <string name="action_misc_export">ZIP に出力</string>
+    <string name="action_misc_import">ZIP から読込</string>
+    <string name="action_misc_upload">クラウドへアップロード</string>
+    <string name="action_misc_syncdown">クラウドから同期</string>
+    <string name="action_misc_scan">QR を読み取る</string>
+    <string name="action_misc_language">言語</string>
+    <string name="action_misc_about">このアプリについて</string>
+    <string name="action_misc_update">アップデート確認</string>
+    <string name="update_latest">最新バージョンです</string>
+    <string name="update_error">更新確認に失敗しました</string>
+    <string name="update_available">新しいバージョンがあります</string>
+    <string name="update_available_msg">新しいバージョン %1$s</string>
+    <string name="update_download">ダウンロード</string>
+    <string name="keeper_home_label">常居所</string>
+    <string name="keeper_nickname_hint">飼育者ニックネーム</string>
+    <!-- OneDrive -->
+    <string name="onedrive_title">OneDrive バックアップ</string>
+    <string name="onedrive_login_hint">OneDrive に接続してバックアップ（Azure でアプリ登録と client ID が必要）</string>
+    <string name="onedrive_login">OneDrive にサインイン</string>
+    <string name="onedrive_logout">サインアウト</string>
+    <string name="onedrive_connected">OneDrive に接続済み</string>
+    <string name="onedrive_connected_as">OneDrive に接続済み：%1$s</string>
+    <string name="onedrive_upload">OneDrive にバックアップ</string>
+    <string name="onedrive_download">OneDrive から復元</string>
+    <string name="onedrive_synced">OneDrive に同期しました</string>
+    <string name="onedrive_restored">OneDrive から復元しました</string>
+    <string name="onedrive_not_signed_in">Microsoft アカウントに未ログイン</string>
+    <string name="onedrive_no_client_id">OneDrive の client ID 未設定。build.gradle で msalClientId を設定してください</string>
+    <string name="onedrive_busy">同期中です。お待ちください</string>
 </resources>

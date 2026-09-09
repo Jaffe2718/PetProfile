@@ -4,7 +4,7 @@
 
 > 面向爬宠饲养玩家、繁育者和爬宠店家的本地优先 Android 应用。
 
-PetProfile 是一款本地优先的 Android 应用，用于管理爬宠档案、个体的饲养记录、谱系（家族树）图、数值可视化、日常提醒通知、备份分享，以及设备间的二维码转交。所有数据都在设备本地运行，无需账号、无需云端同步；只有在你需要地图瓦片或局域网转交时才会使用网络。
+PetProfile 是一款本地优先的 Android 应用，用于管理爬宠档案、个体的饲养记录、谱系（家族树）图、数值可视化、日常提醒通知、备份分享，以及设备间的二维码转交。所有数据都在设备本地运行，无需账号；只有在你需要地图瓦片、局域网转交，或可选的 OneDrive 备份时才会使用网络。
 
 项目使用 Java 编写，通过 Android Studio 和 Gradle 构建。
 
@@ -17,7 +17,8 @@ PetProfile 是一款本地优先的 Android 应用，用于管理爬宠档案、
 - **日常提醒** —— 每个档案可设置喂食 / 换水 / 清洁等提醒，支持每周多次或一次性安排、完成策略（略过 / 顺延）以及系统通知。
 - **日常待办** —— 专门页面展示当天的任务，区分已至 / 未至，支持按宠物筛选、搜索与完成状态的记录。
 - **备份与分享** —— ZIP 导入/导出、PNG 长图分享，以及二维码 + 同一局域网 TCP 转交完整档案树（含先祖与图片）。
-- **饲养者信息** —— 全局饲养者档案（昵称 + 常驻地），自动填充转交与归档的元数据。
+- **云端备份（OneDrive）** —— 可选地把整个数据库作为 ZIP 上传/下载到登录用户自己的 OneDrive（应用专属文件夹），微软登录在设备端完成。
+- **饲养者信息** —— 全局饲养者档案（昵称 + 常驻地），自动填充转交与归档的元数据，并在页面内提供 OneDrive 登录。
 - **多语言** —— 简体中文、繁体中文（香港）、英文、日文。
 
 ## 功能
@@ -71,9 +72,20 @@ PetProfile 是一款本地优先的 Android 应用，用于管理爬宠档案、
 - 二维码 + 同一局域网转交：二维码只承载连接信息，完整档案树（含先祖与图片）通过 TCP 传输。
 - 转交时会新增一条归档（转出）记录，本地不存在的先祖档案也会补一条转出归档，便于血统溯源。
 
+### 云端备份 / 恢复（OneDrive）
+
+**更多**页面与**饲养者信息**页面都提供「上传到云端 / 从云端同步」，把整个数据库作为 ZIP 备份到登录用户自己的 OneDrive，并可从那里恢复。
+
+- 微软登录采用设备端的授权码 + PKCE 流程（无服务端、无 client secret），因此**不需要** Google 那种 OAuth 同意校验。你需在 Azure 一次性注册应用（一个 client ID、一条移动/桌面重定向 URI、`Files.ReadWrite.AppFolder` 委派权限），再把 client ID 填入 `app/build.gradle` 的 `def msalClientId = ...`。用户在 App 内登录自己的 Microsoft 账户即可。
+- 备份存放到应用的 OneDrive 专属文件夹（`/me/drive/special/approot`），不占用用户可见空间，文件名 `pet-profile-backup.zip`，包含图片。
+- 上传/下载进行中时，按钮会全局保持禁用（离开页面也不会失效），再点会提示「正在同步，请稍后」。
+- 「检查更新」按钮会查询 GitHub 最新 release（`v{x}.{y}.{z}`），若高于当前版本，则提供从 `https://github.com/Jaffe2718/PetProfile/releases/download/v{x}.{y}.{z}/petprofile.apk` 下载。
+
 ### 饲养者信息
 
 - 全局昵称与常驻地（地图选点，地址 + 度分秒）。
+- **常驻地**按钮带房子图标：单击用导航软件打开该坐标，长按重新选点。
+- 页面内提供 OneDrive 登录、备份与恢复入口。
 - 用于自动填充转交与归档的饲养者姓名、地点，并通过 ZIP 导入/导出共享。
 
 ## 地图底图
@@ -97,6 +109,7 @@ PetProfile 是一款本地优先的 Android 应用，用于管理爬宠档案、
 - 二维码生成：ZXing
 - 二维码扫描：CameraX + ML Kit Barcode Scanning
 - 地图瓦片：高德 / Google Maps / OpenStreetMap
+- 云端备份：Microsoft Graph（OneDrive）+ 授权码/PKCE OAuth
 
 ## 构建
 
@@ -132,7 +145,7 @@ app/build/outputs/apk/debug/app-debug.apk
 
 - `CAMERA` —— 扫描转交二维码。
 - `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` —— 地图选点与 GPS。
-- `INTERNET` —— 地图瓦片与局域网转交。
+- `INTERNET` —— 地图瓦片、局域网转交、检查更新，以及 OneDrive 备份。
 - `POST_NOTIFICATIONS` —— 日常提醒。
 - `RECEIVE_BOOT_COMPLETED` —— 系统重启后重新调度提醒。
 
@@ -170,6 +183,8 @@ PetProfile 提供一个本地 Model Context Protocol 服务，让同一局域网
 
 **写** —— `create_profile`、`update_profile`、`delete_profile`、`set_profile_parents`、`set_profile_custom_fields`、`create_record`、`update_record`、`delete_record`、`create_routine`、`update_routine`、`delete_routine`、`complete_routine`、`save_keeper_info`、`export_zip`、`import_zip`。
 
+**OneDrive 云端备份** —— `is_onedrive_connected`、`upload_to_onedrive`、`download_onedrive`、`get_onedrive_result`。**不开放登录工具**：用户需在设备上登录 Microsoft（饲养者信息 → 登录 OneDrive）。`upload_to_onedrive` / `download_onedrive` 先返回 `{"status":"started"}`，结果通过 `get_onedrive_result` 获取。
+
 图片随档案/记录操作一起处理，而非单独导入：`create_record`/`update_record` 接受 `images` 数组，`create_profile`/`update_profile` 接受 `avatarData`。单张图片可以给 `uri`（content:/file:）或 base64 `data`（可带 `extension`/`mimeType`），并存入应用私有目录。`update_record` 还能用 `imagesMode`（`append`/`replace`，默认 `replace`）决定追加还是覆盖，用 `removeImages`（数组内填图片 id，通过 `get_record` 读取）删除指定图片。Markdown 支持内联 `![alt](data:image/...;base64,....)` 图片，会自动解码并改写为私有 `file://` URI。`export_zip` 返回 base64 `data`（或写到 `targetUri`），`import_zip` 接受 base64 `data`（或 `uri`）。
 
 写操作成功后，前台数据页（档案列表、记录列表、日常待办、记录详情、图表）会自动刷新，且不会关闭已打开的弹窗。
@@ -181,7 +196,7 @@ PetProfile 提供一个本地 Model Context Protocol 服务，让同一局域网
 - 所有数据通过 Room 保存在本地数据库中。
 - 图片会复制到应用私有目录（`files/images/`），即使原图从相册删除，记录依然完整；Markdown 中的图片引用会改写为这些文件。
 - ZIP 导出会打包相关图片，并在导入时恢复到应用私有目录；唯一文件名避免跨设备冲突。
-- 应用为本地优先版本，暂不提供云端同步。
+- 应用为本地优先版本；可选的 OneDrive 备份会自动把数据库备份/恢复到你的 OneDrive，但即使不用它，应用也完全离线可用。
 
 ## 仓库与反馈
 

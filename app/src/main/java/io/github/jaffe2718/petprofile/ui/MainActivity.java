@@ -475,35 +475,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_keeper_info) {
-            showKeeperInfoDialog();
-            return true;
-        }
-        if (id == R.id.action_daily_todo) {
-            startActivity(new Intent(this, DailyTodoActivity.class));
-            return true;
-        }
-        if (id == R.id.action_export) {
-            exportZip();
-            return true;
-        }
-        if (id == R.id.action_import) {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("application/zip");
-            startActivityForResult(intent, REQUEST_IMPORT);
-            return true;
-        }
-        if (id == R.id.action_scan_qr) {
-            startActivity(new Intent(this, QrScannerActivity.class));
-            return true;
-        }
-        if (id == R.id.action_language) {
-            chooseLanguage();
-            return true;
-        }
-        if (id == R.id.action_about) {
-            showAbout();
+        if (id == R.id.action_more) {
+            startActivity(new Intent(this, MiscToolsActivity.class));
             return true;
         }
         return super.onOptionsItemSelected(item);

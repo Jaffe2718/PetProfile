@@ -188,7 +188,12 @@ public class RecordEditActivity extends AppCompatActivity {
             applyCreationDefaultsForType(currentType);
         });
         timeButton.setOnClickListener(v -> pickTime());
-        findViewById(R.id.locationButton).setOnClickListener(v -> pickLocation());
+        View locationBtn = findViewById(R.id.locationButton);
+        locationBtn.setOnClickListener(v -> openLocationInMap());
+        locationBtn.setOnLongClickListener(v -> {
+            pickLocation();
+            return true;
+        });
         transferFromPlaceButton.setOnClickListener(v -> pickTransferFromPlace());
         transferToPlaceButton.setOnClickListener(v -> pickTransferToPlace());
         findViewById(R.id.addFieldButton).setOnClickListener(v ->
@@ -459,6 +464,14 @@ public class RecordEditActivity extends AppCompatActivity {
         double initialLatitude = coords == null ? 35.0 : coords[0];
         double initialLongitude = coords == null ? 105.0 : coords[1];
         LocationHelper.openMapPicker(this, REQUEST_MAP_PICK, initialLatitude, initialLongitude);
+    }
+
+    private void openLocationInMap() {
+        if (latitude == null || longitude == null) {
+            pickLocation();
+            return;
+        }
+        LocationHelper.openInMap(this, latitude, longitude);
     }
 
     private void pickTransferFromPlace() {

@@ -193,4 +193,39 @@
     <string name="mcp_disabled">Server is off</string>
     <string name="mcp_description">"When the phone and this device are on the same LAN, set the URL and Authorization Key above in an AI tool (such as DSH / Claude Code / Cursor) to read or modify this app's data. The server only listens while the switch is on."</string>
     <string name="mcp_service_running">MCP server running · %1$s</string>
+
+    <!-- misc / keeper -->
+    <string name="action_more">More</string>
+    <string name="action_language">Language</string>
+    <string name="action_misc_todo">Daily Todo</string>
+    <string name="action_misc_keeper">Keeper Info</string>
+    <string name="action_misc_export">Export ZIP</string>
+    <string name="action_misc_import">Import ZIP</string>
+    <string name="action_misc_upload">Upload to cloud</string>
+    <string name="action_misc_syncdown">Sync from cloud</string>
+    <string name="action_misc_scan">Scan QR</string>
+    <string name="action_misc_language">Language</string>
+    <string name="action_misc_about">About</string>
+    <string name="action_misc_update">Check Update</string>
+    <string name="update_latest">Already up to date</string>
+    <string name="update_error">Update check failed</string>
+    <string name="update_available">Update available</string>
+    <string name="update_available_msg">New version %1$s</string>
+    <string name="update_download">Download</string>
+    <string name="keeper_home_label">Home</string>
+    <string name="keeper_nickname_hint">Keeper nickname</string>
+    <!-- OneDrive -->
+    <string name="onedrive_title">OneDrive Backup</string>
+    <string name="onedrive_login_hint">Connect OneDrive to back up (needs an Azure app client ID)</string>
+    <string name="onedrive_login">Sign in to OneDrive</string>
+    <string name="onedrive_logout">Sign out</string>
+    <string name="onedrive_connected">Connected to OneDrive</string>
+    <string name="onedrive_connected_as">Connected to OneDrive: %1$s</string>
+    <string name="onedrive_upload">Back up to OneDrive</string>
+    <string name="onedrive_download">Restore from OneDrive</string>
+    <string name="onedrive_synced">Synced to OneDrive</string>
+    <string name="onedrive_restored">Restored from OneDrive</string>
+    <string name="onedrive_not_signed_in">Not signed in to a Microsoft account</string>
+    <string name="onedrive_no_client_id">OneDrive client ID not set; set msalClientId in build.gradle</string>
+    <string name="onedrive_busy">Syncing, please wait</string>
 </resources>

@@ -3,14 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_chart"
+        android:icon="@drawable/ic_chart"
         android:title="@string/label_chart"
-        app:showAsAction="never" />
+        app:iconTint="@color/text_primary"
+        app:showAsAction="always" />
     <item
         android:id="@+id/action_share_card"
+        android:icon="@drawable/ic_share"
         android:title="@string/action_share"
-        app:showAsAction="never" />
+        app:iconTint="@color/text_primary"
+        app:showAsAction="always" />
     <item
         android:id="@+id/action_transfer_qr"
+        android:icon="@drawable/ic_qr"
         android:title="@string/action_show_qr"
-        app:showAsAction="never" />
+        app:iconTint="@color/text_primary"
+        app:showAsAction="always" />
 </menu>

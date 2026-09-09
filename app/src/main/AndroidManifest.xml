@@ -30,6 +30,22 @@
         <activity
             android:name=".ui.DailyTodoActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.MiscToolsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.KeeperInfoActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.OneDriveAuthActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${msalScheme}" android:host="auth" />
+            </intent-filter>
+        </activity>
         <receiver
             android:name=".ui.RoutineRepostReceiver"
             android:exported="false" />
