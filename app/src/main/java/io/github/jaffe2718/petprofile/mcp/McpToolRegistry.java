@@ -239,7 +239,7 @@ public final class McpToolRegistry {
                 obj(),
                 this::uploadOneDrive));
         register(writeTool("download_onedrive",
-                "Restore from the OneDrive backup. Incremental and resumable: data.json is imported first, then only the missing/changed images are transferred (unchanged files are skipped by name + size + SHA-1), so a partial run is simply completed by the next call. Profiles and records contained in the backup overwrite the local ones by id; local profiles created after the last upload are kept; an image that has not arrived yet is stored as an empty reference and renders as nothing. Returns immediately; poll get_onedrive_result for the outcome.",
+                "Restore from the OneDrive backup. Incremental and resumable: data.json is imported first, then only the missing/changed images are transferred (unchanged files are skipped by name + size + SHA-1), so a partial run is simply completed by the next call. The backup wins wherever it and the device both have the same entry, while records, routines, fields, images and parent links that exist only locally (added after the last upload) are merged back instead of being dropped; an image that has not arrived yet is stored as an empty reference and renders as nothing. Returns immediately; poll get_onedrive_result for the outcome.",
                 obj(),
                 this::downloadOneDrive));
         register(tool("get_onedrive_result",

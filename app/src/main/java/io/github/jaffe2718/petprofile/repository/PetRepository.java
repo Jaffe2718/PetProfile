@@ -15,6 +15,7 @@ import io.github.jaffe2718.petprofile.data.RecordDetails;
 import io.github.jaffe2718.petprofile.data.RecordType;
 import io.github.jaffe2718.petprofile.data.dao.ProfileDao;
 import io.github.jaffe2718.petprofile.data.dao.RecordDao;
+import io.github.jaffe2718.petprofile.data.dao.RoutineDao;
 import io.github.jaffe2718.petprofile.data.entity.ProfileCustomFieldEntity;
 import io.github.jaffe2718.petprofile.data.entity.ProfileEntity;
 import io.github.jaffe2718.petprofile.data.entity.ProfileParentCrossRef;
@@ -657,7 +658,27 @@ public class PetRepository {
         });
     }
 
+    /**
+     * Replaces the profiles contained in the bundle (together with everything that cascades from
+     * them) with the bundle's version: the entry point for ZIP import and LAN transfer, where the
+     * archive is expected to be reproduced exactly.
+     */
     public void importBundle(ExportBundle bundle, Async.EmptyResult callback) {
+        importBundle(bundle, false, callback);
+    }
+
+    /**
+     * Cloud restore entry point. Same as {@link #importBundle(ExportBundle, Async.EmptyResult)}, but
+     * the records, record fields/images, routines, custom fields and parent links that exist
+     * <b>only locally</b> — added after the last upload, so the backup never saw them — are put back
+     * after the import. The backup still wins wherever both sides have the same entry, which keeps a
+     * restore additive instead of lossy for work that was never uploaded.
+     */
+    public void importBundleMergingLocal(ExportBundle bundle, Async.EmptyResult callback) {
+        importBundle(bundle, true, callback);
+    }
+
+    private void importBundle(ExportBundle bundle, boolean keepLocalOnlyChildren, Async.EmptyResult callback) {
         Async.run(() -> {
             try {
                 if (bundle == null) {
@@ -666,11 +687,16 @@ public class PetRepository {
                 database.runInTransaction(() -> {
                     ProfileDao profileDao = database.profileDao();
                     RecordDao recordDao = database.recordDao();
+                    RoutineDao routineDao = database.routineDao();
                     Set<String> profileIds = new HashSet<>();
                     for (ProfileEntity profile : bundle.profiles) {
                         profile.id = IdUtil.normalizeId(profile.id);
                         profileIds.add(profile.id);
                     }
+                    // Captured before the delete: the cascade below would remove them with the profile.
+                    LocalChildren local = keepLocalOnlyChildren
+                            ? captureLocalChildren(profileDao, recordDao, routineDao, profileIds)
+                            : null;
                     for (String profileId : profileIds) {
                         profileDao.deleteById(profileId);
                     }
@@ -719,7 +745,10 @@ public class PetRepository {
                         routine.profileId = IdUtil.normalizeId(routine.profileId);
                     }
                     if (!bundle.routines.isEmpty()) {
-                        database.routineDao().insertAll(bundle.routines);
+                        routineDao.insertAll(bundle.routines);
+                    }
+                    if (local != null) {
+                        restoreLocalOnlyChildren(local, bundle, profileDao, recordDao, routineDao);
                     }
                     for (String profileId : profileIds) {
                         syncArchiveStatus(profileDao, recordDao, profileId);
@@ -733,6 +762,165 @@ public class PetRepository {
                 Async.ui(() -> callback.onError(t));
             }
         });
+    }
+
+    /** True for record types a profile may hold only once (or not at all). */
+    private static boolean isSingletonType(String type) {
+        return RecordType.ESTABLISHMENT.equals(type) || RecordType.ARCHIVE.equals(type);
+    }
+
+    /** Children of the imported profiles that the cascade delete is about to remove. */
+    private static final class LocalChildren {
+        final List<RecordEntity> records = new ArrayList<>();
+        final List<RecordFieldEntity> recordFields = new ArrayList<>();
+        final List<RecordImageEntity> recordImages = new ArrayList<>();
+        final List<RoutineEntity> routines = new ArrayList<>();
+        final List<ProfileCustomFieldEntity> customFields = new ArrayList<>();
+        final List<ProfileParentCrossRef> parentLinks = new ArrayList<>();
+    }
+
+    private static LocalChildren captureLocalChildren(ProfileDao profileDao, RecordDao recordDao,
+                                                      RoutineDao routineDao, Set<String> profileIds) {
+        LocalChildren local = new LocalChildren();
+        List<String> recordIds = new ArrayList<>();
+        for (String profileId : profileIds) {
+            List<RecordEntity> records = recordDao.getRecordsForProfile(profileId);
+            if (records != null) {
+                local.records.addAll(records);
+                for (RecordEntity record : records) {
+                    recordIds.add(record.id);
+                }
+            }
+            List<RoutineEntity> routines = routineDao.getRoutinesForProfile(profileId);
+            if (routines != null) {
+                local.routines.addAll(routines);
+            }
+            List<ProfileCustomFieldEntity> fields = profileDao.getCustomFields(profileId);
+            if (fields != null) {
+                local.customFields.addAll(fields);
+            }
+            List<ProfileParentCrossRef> links = profileDao.getParentLinks(profileId);
+            if (links != null) {
+                local.parentLinks.addAll(links);
+            }
+        }
+        if (!recordIds.isEmpty()) {
+            List<RecordFieldEntity> fields = recordDao.getFieldsForRecords(recordIds);
+            if (fields != null) {
+                local.recordFields.addAll(fields);
+            }
+            List<RecordImageEntity> images = recordDao.getImagesForRecords(recordIds);
+            if (images != null) {
+                local.recordImages.addAll(images);
+            }
+        }
+        return local;
+    }
+
+    /**
+     * Puts back the captured children the bundle does not contain. Anything both sides have is left
+     * to the bundle, so the cloud version of a record, routine, field or link always wins.
+     */
+    private static void restoreLocalOnlyChildren(LocalChildren local, ExportBundle bundle,
+                                                 ProfileDao profileDao, RecordDao recordDao,
+                                                 RoutineDao routineDao) {
+        Set<String> bundledRecords = new HashSet<>();
+        Set<String> bundledSingletons = new HashSet<>();
+        for (RecordEntity record : bundle.records) {
+            bundledRecords.add(record.id);
+            if (isSingletonType(record.type)) {
+                bundledSingletons.add(record.profileId + "\u0000" + record.type);
+            }
+        }
+        List<RecordEntity> keptRecords = new ArrayList<>();
+        Set<String> keptRecordIds = new HashSet<>();
+        for (RecordEntity record : local.records) {
+            if (bundledRecords.contains(record.id)) {
+                continue;
+            }
+            // A profile has exactly one establishment record and at most one archive record: if the
+            // backup brings one, keeping a second local one would break that invariant.
+            if (isSingletonType(record.type)
+                    && bundledSingletons.contains(record.profileId + "\u0000" + record.type)) {
+                continue;
+            }
+            keptRecords.add(record);
+            keptRecordIds.add(record.id);
+        }
+        if (!keptRecords.isEmpty()) {
+            recordDao.insertRecords(keptRecords);
+        }
+
+        Set<String> bundledFields = new HashSet<>();
+        for (RecordFieldEntity field : bundle.recordFields) {
+            bundledFields.add(field.recordId + "\u0000" + field.fieldKey);
+        }
+        List<RecordFieldEntity> keptFields = new ArrayList<>();
+        for (RecordFieldEntity field : local.recordFields) {
+            if (keptRecordIds.contains(field.recordId)
+                    && !bundledFields.contains(field.recordId + "\u0000" + field.fieldKey)) {
+                keptFields.add(field);
+            }
+        }
+        if (!keptFields.isEmpty()) {
+            recordDao.insertFields(keptFields);
+        }
+
+        Set<String> bundledImages = new HashSet<>();
+        for (RecordImageEntity image : bundle.recordImages) {
+            bundledImages.add(image.id);
+        }
+        List<RecordImageEntity> keptImages = new ArrayList<>();
+        for (RecordImageEntity image : local.recordImages) {
+            if (keptRecordIds.contains(image.recordId) && !bundledImages.contains(image.id)) {
+                keptImages.add(image);
+            }
+        }
+        if (!keptImages.isEmpty()) {
+            recordDao.insertImages(keptImages);
+        }
+
+        Set<String> bundledRoutines = new HashSet<>();
+        for (RoutineEntity routine : bundle.routines) {
+            bundledRoutines.add(routine.id);
+        }
+        List<RoutineEntity> keptRoutines = new ArrayList<>();
+        for (RoutineEntity routine : local.routines) {
+            if (!bundledRoutines.contains(routine.id)) {
+                keptRoutines.add(routine);
+            }
+        }
+        if (!keptRoutines.isEmpty()) {
+            routineDao.insertAll(keptRoutines);
+        }
+
+        Set<String> bundledCustomFields = new HashSet<>();
+        for (ProfileCustomFieldEntity field : bundle.customFields) {
+            bundledCustomFields.add(field.profileId + "\u0000" + field.fieldKey);
+        }
+        List<ProfileCustomFieldEntity> keptCustomFields = new ArrayList<>();
+        for (ProfileCustomFieldEntity field : local.customFields) {
+            if (!bundledCustomFields.contains(field.profileId + "\u0000" + field.fieldKey)) {
+                keptCustomFields.add(field);
+            }
+        }
+        if (!keptCustomFields.isEmpty()) {
+            profileDao.insertCustomFields(keptCustomFields);
+        }
+
+        Set<String> bundledLinks = new HashSet<>();
+        for (ProfileParentCrossRef link : bundle.parentLinks) {
+            bundledLinks.add(link.childId + "\u0000" + link.parentId);
+        }
+        List<ProfileParentCrossRef> keptLinks = new ArrayList<>();
+        for (ProfileParentCrossRef link : local.parentLinks) {
+            if (!bundledLinks.contains(link.childId + "\u0000" + link.parentId)) {
+                keptLinks.add(link);
+            }
+        }
+        if (!keptLinks.isEmpty()) {
+            profileDao.insertParents(keptLinks);
+        }
     }
 
     // --- Synchronous export builders for the LAN MCP tools. ---

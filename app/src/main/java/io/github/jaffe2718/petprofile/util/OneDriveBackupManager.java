@@ -411,7 +411,7 @@ public final class OneDriveBackupManager {
     /** Imports the data first (the change is visible at once), then works out and transfers the images. */
     private static void importThenFetch(Context context, String token, Callback callback, ExportBundle bundle,
                                         Set<String> registered) {
-        PetRepository.get(context).importBundle(bundle, new Async.EmptyResult() {
+        PetRepository.get(context).importBundleMergingLocal(bundle, new Async.EmptyResult() {
             @Override
             public void onSuccess() {
                 RoutineScheduler.scheduleAll(context);
@@ -550,7 +550,7 @@ public final class OneDriveBackupManager {
                 return;
             }
             Log.i(TAG, "restoring the legacy single-ZIP backup");
-            PetRepository.get(context).importBundle(bundle, new Async.EmptyResult() {
+            PetRepository.get(context).importBundleMergingLocal(bundle, new Async.EmptyResult() {
                 @Override
                 public void onSuccess() {
                     RoutineScheduler.scheduleAll(context);
