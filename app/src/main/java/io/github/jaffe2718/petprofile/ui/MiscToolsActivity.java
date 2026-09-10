@@ -1,6 +1,5 @@
 package io.github.jaffe2718.petprofile.ui;
 
-import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -36,7 +35,6 @@ import io.github.jaffe2718.petprofile.mcp.McpTokenManager;
 import io.github.jaffe2718.petprofile.repository.PetRepository;
 import io.github.jaffe2718.petprofile.util.Async;
 import io.github.jaffe2718.petprofile.util.BackupManager;
-import io.github.jaffe2718.petprofile.util.DriveBackupManager;
 import io.github.jaffe2718.petprofile.util.OneDriveBackupManager;
 import io.github.jaffe2718.petprofile.util.RoutineNotifier;
 import io.github.jaffe2718.petprofile.util.RoutineScheduler;
@@ -54,7 +52,6 @@ public class MiscToolsActivity extends AppCompatActivity {
     private static final int REQUEST_IMPORT = 5502;
     private ExportBundle pendingExportBundle;
     private Dialog mcpDialog;
-    private int pendingDrive = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,34 +139,24 @@ public class MiscToolsActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.onedrive_busy, Toast.LENGTH_SHORT).show();
             return;
         }
-        pendingDrive = 0;
         OneDriveBackupManager.setCloudBusy(true);
         updateCloudButtons();
         PetRepository.get(this).exportAll(new Async.Result<ExportBundle>() {
             @Override
             public void onSuccess(ExportBundle bundle) {
-                Async.run(() -> {
-                    try {
-                        byte[] zipBytes = BackupManager.createZipBytes(MiscToolsActivity.this, bundle);
-                        OneDriveBackupManager.upload(MiscToolsActivity.this, zipBytes, new OneDriveBackupManager.Callback() {
-                            @Override
-                            public void onSuccess(String message) {
-                                OneDriveBackupManager.setCloudBusy(false);
-                                updateCloudButtons();
-                                Toast.makeText(MiscToolsActivity.this, message, Toast.LENGTH_SHORT).show();
-                            }
-
-                            @Override
-                            public void onError(String message) {
-                                OneDriveBackupManager.setCloudBusy(false);
-                                updateCloudButtons();
-                                Toast.makeText(MiscToolsActivity.this, message, Toast.LENGTH_LONG).show();
-                            }
-                        });
-                    } catch (Throwable t) {
+                OneDriveBackupManager.upload(MiscToolsActivity.this, bundle, new OneDriveBackupManager.Callback() {
+                    @Override
+                    public void onSuccess(String message) {
                         OneDriveBackupManager.setCloudBusy(false);
                         updateCloudButtons();
-                        Async.ui(() -> Toast.makeText(MiscToolsActivity.this, t.getMessage(), Toast.LENGTH_LONG).show());
+                        Toast.makeText(MiscToolsActivity.this, message, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        OneDriveBackupManager.setCloudBusy(false);
+                        updateCloudButtons();
+                        Toast.makeText(MiscToolsActivity.this, message, Toast.LENGTH_LONG).show();
                     }
                 });
             }
@@ -192,7 +179,7 @@ public class MiscToolsActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.onedrive_busy, Toast.LENGTH_SHORT).show();
             return;
         }
-        pendingDrive = 1;
+        // The restore fills in what is missing and is resumable, so it starts right away.
         OneDriveBackupManager.setCloudBusy(true);
         updateCloudButtons();
         OneDriveBackupManager.download(this, new OneDriveBackupManager.Callback() {
@@ -388,17 +375,9 @@ public class MiscToolsActivity extends AppCompatActivity {
         startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
     }
 
-    @SuppressLint("MissingSuperCall")
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (requestCode == DriveBackupManager.REQUEST_AUTH) {
-            if (pendingDrive == 0) {
-                syncDrive();
-            } else {
-                syncFromCloud();
-            }
-            return;
-        }
+        super.onActivityResult(requestCode, resultCode, data);
         if (resultCode != RESULT_OK || data == null) {
             return;
         }

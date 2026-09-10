@@ -9,6 +9,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
 import io.github.jaffe2718.petprofile.data.KeeperInfo;
@@ -65,6 +67,13 @@ public class KeeperInfoActivity extends AppCompatActivity {
         updateDriveUi();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // The browser login returns to this page, so the state must be re-read.
+        updateDriveUi();
+    }
+
     private void updateHomeButton() {
         homeButton.setText(draft.hasHomePlace()
                 ? draft.homePlace
@@ -88,9 +97,13 @@ public class KeeperInfoActivity extends AppCompatActivity {
 
     private void toggleSignIn() {
         if (OneDriveBackupManager.isSignedIn(this)) {
-            OneDriveBackupManager.signOut(this);
-            Toast.makeText(this, R.string.onedrive_logout, Toast.LENGTH_SHORT).show();
-            updateDriveUi();
+            // Signing out drops the stored tokens, so it is confirmed first.
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.onedrive_logout_confirm_title)
+                    .setMessage(R.string.onedrive_logout_confirm_message)
+                    .setPositiveButton(R.string.onedrive_logout, (dialog, which) -> signOut())
+                    .setNegativeButton(R.string.action_cancel, null)
+                    .show();
             return;
         }
         OneDriveBackupManager.signIn(this, new OneDriveBackupManager.Callback() {
@@ -107,6 +120,12 @@ public class KeeperInfoActivity extends AppCompatActivity {
         });
     }
 
+    private void signOut() {
+        OneDriveBackupManager.signOut(this);
+        Toast.makeText(this, R.string.onedrive_logout, Toast.LENGTH_SHORT).show();
+        updateDriveUi();
+    }
+
     private void updateDriveUi() {
         boolean signedIn = OneDriveBackupManager.isSignedIn(this);
         String account = OneDriveBackupManager.getAccountName(this);
@@ -119,8 +138,10 @@ public class KeeperInfoActivity extends AppCompatActivity {
             driveStatusText.setText(R.string.onedrive_login_hint);
             driveLoginButton.setText(R.string.onedrive_login);
         }
-        driveUploadButton.setEnabled(signedIn && !OneDriveBackupManager.isCloudBusy());
-        driveDownloadButton.setEnabled(signedIn && !OneDriveBackupManager.isCloudBusy());
+        boolean idle = !OneDriveBackupManager.isCloudBusy();
+        driveLoginButton.setEnabled(idle);
+        driveUploadButton.setEnabled(signedIn && idle);
+        driveDownloadButton.setEnabled(signedIn && idle);
     }
 
     private void uploadToDrive() {
@@ -133,27 +154,19 @@ public class KeeperInfoActivity extends AppCompatActivity {
         PetRepository.get(this).exportAll(new Async.Result<ExportBundle>() {
             @Override
             public void onSuccess(ExportBundle bundle) {
-                Async.run(() -> {
-                    try {
-                        byte[] zipBytes = BackupManager.createZipBytes(KeeperInfoActivity.this, bundle);
-                        OneDriveBackupManager.upload(KeeperInfoActivity.this, zipBytes, new OneDriveBackupManager.Callback() {
-                            @Override
-                            public void onSuccess(String message) {
-                                OneDriveBackupManager.setCloudBusy(false);
-                                Toast.makeText(KeeperInfoActivity.this, message, Toast.LENGTH_SHORT).show();
-                                updateDriveUi();
-                            }
-
-                            @Override
-                            public void onError(String message) {
-                                OneDriveBackupManager.setCloudBusy(false);
-                                Toast.makeText(KeeperInfoActivity.this, message, Toast.LENGTH_LONG).show();
-                                updateDriveUi();
-                            }
-                        });
-                    } catch (Throwable t) {
+                OneDriveBackupManager.upload(KeeperInfoActivity.this, bundle, new OneDriveBackupManager.Callback() {
+                    @Override
+                    public void onSuccess(String message) {
                         OneDriveBackupManager.setCloudBusy(false);
-                        Async.ui(() -> Toast.makeText(KeeperInfoActivity.this, t.getMessage(), Toast.LENGTH_LONG).show());
+                        Toast.makeText(KeeperInfoActivity.this, message, Toast.LENGTH_SHORT).show();
+                        updateDriveUi();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        OneDriveBackupManager.setCloudBusy(false);
+                        Toast.makeText(KeeperInfoActivity.this, message, Toast.LENGTH_LONG).show();
+                        updateDriveUi();
                     }
                 });
             }
@@ -161,6 +174,7 @@ public class KeeperInfoActivity extends AppCompatActivity {
             @Override
             public void onError(Throwable error) {
                 OneDriveBackupManager.setCloudBusy(false);
+                updateDriveUi();
                 Toast.makeText(KeeperInfoActivity.this, error.getMessage(), Toast.LENGTH_LONG).show();
             }
         });

@@ -17,7 +17,7 @@ PetProfile 是一款本地优先的 Android 应用，用于管理爬宠档案、
 - **日常提醒** —— 每个档案可设置喂食 / 换水 / 清洁等提醒，支持每周多次或一次性安排、完成策略（略过 / 顺延）以及系统通知。
 - **日常待办** —— 专门页面展示当天的任务，区分已至 / 未至，支持按宠物筛选、搜索与完成状态的记录。
 - **备份与分享** —— ZIP 导入/导出、PNG 长图分享，以及二维码 + 同一局域网 TCP 转交完整档案树（含先祖与图片）。
-- **云端备份（OneDrive）** —— 可选地把整个数据库作为 ZIP 上传/下载到登录用户自己的 OneDrive（应用专属文件夹），微软登录在设备端完成。
+- **云端备份（OneDrive）** —— 可选地把整个数据库增量同步到登录用户自己的 OneDrive（应用专属文件夹），只传输变动部分，微软登录在设备端完成。
 - **饲养者信息** —— 全局饲养者档案（昵称 + 常驻地），自动填充转交与归档的元数据，并在页面内提供 OneDrive 登录。
 - **多语言** —— 简体中文、繁体中文（香港）、英文、日文。
 
@@ -67,18 +67,26 @@ PetProfile 是一款本地优先的 Android 应用，用于管理爬宠档案、
 
 ### 备份、分享与转交
 
-- ZIP 导出/导入覆盖整个数据库：档案、记录、属性、图片与饲养者信息。
+- ZIP 导出/导入覆盖整个数据库：档案、记录、属性、图片与饲养者信息。磁盘上已缺失的图片文件会被跳过，不会导致导出整体失败。
 - PNG 长图分享：顶部为档案卡片，下方逐条渲染记录，包含属性字段与 Markdown 笔记。
 - 二维码 + 同一局域网转交：二维码只承载连接信息，完整档案树（含先祖与图片）通过 TCP 传输。
 - 转交时会新增一条归档（转出）记录，本地不存在的先祖档案也会补一条转出归档，便于血统溯源。
 
 ### 云端备份 / 恢复（OneDrive）
 
-**更多**页面与**饲养者信息**页面都提供「上传到云端 / 从云端同步」，把整个数据库作为 ZIP 备份到登录用户自己的 OneDrive，并可从那里恢复。
+**更多**页面与**饲养者信息**页面都提供「上传到云端 / 从云端同步」，把整个数据库备份到登录用户自己的 OneDrive，并可从那里恢复。
 
 - 微软登录采用设备端的授权码 + PKCE 流程（无服务端、无 client secret），因此**不需要** Google 那种 OAuth 同意校验。你需在 Azure 一次性注册应用（一个 client ID、一条移动/桌面重定向 URI、`Files.ReadWrite.AppFolder` 委派权限），再把 client ID 填入 `app/build.gradle` 的 `def msalClientId = ...`。用户在 App 内登录自己的 Microsoft 账户即可。
-- 备份存放到应用的 OneDrive 专属文件夹（`/me/drive/special/approot`），不占用用户可见空间，文件名 `pet-profile-backup.zip`，包含图片。
-- 上传/下载进行中时，按钮会全局保持禁用（离开页面也不会失效），再点会提示「正在同步，请稍后」。
+- 云端存放的是**解包结构**而非单个 ZIP：`data.json` + `images/<文件名>`，位于应用的 OneDrive 专属文件夹（`/me/drive/special/approot`），不占用用户可见空间。因为图片文件名永久不变，同步只需比对文件名与大小/SHA-1，因此**只传输变动部分**：
+  - 上传（最新覆盖）：`data.json` 始终更新；图片仅在云端缺失或内容不同（大小 + SHA-1）时上传；云端已不再被引用的图片会被清理。上传顺序为「先图片、后 data.json、最后清理」，因此云端永远不会出现引用了不存在图片的 `data.json`，中断也不会破坏云端已有备份。
+  - 下载（增量补齐、可中断续传）：**先取 `data.json` 并立即入库**，记录马上就能看到；然后**逐个文件**判断，名字 + 大小 + SHA-1 一致就跳过，否则下载并直接落盘。单个文件失败**不影响其它文件**，失败的文件下次同步会继续补齐。单个文件传输**停顿 5 分钟**即判定该文件失败（连接阶段上限 30 秒），且同步过程不会阻塞界面读取数据。恢复没有确认对话框，也不需要本地回档点——备份/回滚统一走 ZIP 导出与导入。
+  - 恢复的覆盖范围：**备份中包含的档案**会连同其记录按 id 整体替换 —— 上次上传之后你在这个档案里新增的记录会被云端版本**覆盖**而不是合并；备份里没有的档案保持原样。需要保留这类本地改动时，请先导出 ZIP。
+  - 图片允许**空引用**：引用已经指向最终路径，只是文件尚未到位，界面直接不渲染该图（列表/详情/谱系头像留空，Markdown 按缺图处理）；图片下载完成后同一条引用自动生效，无需改数据库。ZIP 导出与局域网转交遇到缺失图片会跳过该图并继续，不会整体失败。
+- 访问令牌过期后会自动用 refresh token 静默续期，用户无需反复登录；只有 refresh token 失效（被撤销等）时才需要重新登录，届时会提示「OneDrive 登录已失效，请重新登录」。
+- 恢复完成后会广播刷新前台数据页（档案列表、记录列表与详情、日常待办、图表）。
+- 退出登录（**饲养者信息**页的「退出登录」）会先弹确认框：退出只清除本机保存的令牌，云端已有备份不受影响。
+- 旧版本（≤ 0.3.0）上传的单个 `pet-profile-backup.zip` 仍可被识别并恢复；一旦下一次上传成功，该旧文件会被自动清除。
+- 上传/下载进行中时，按钮会全局保持禁用（离开页面也不会失效），再点会提示「正在同步，请稍后」；通知栏会显示 `x/y` 的文件进度（需通知权限），同步结束、或同步中被杀后再次启动 App 时都会自动清除该通知。
 - 「检查更新」按钮会查询 GitHub 最新 release（`v{x}.{y}.{z}`），若高于当前版本，则提供从 `https://github.com/Jaffe2718/PetProfile/releases/download/v{x}.{y}.{z}/petprofile.apk` 下载。
 
 ### 饲养者信息
@@ -183,7 +191,7 @@ PetProfile 提供一个本地 Model Context Protocol 服务，让同一局域网
 
 **写** —— `create_profile`、`update_profile`、`delete_profile`、`set_profile_parents`、`set_profile_custom_fields`、`create_record`、`update_record`、`delete_record`、`create_routine`、`update_routine`、`delete_routine`、`complete_routine`、`save_keeper_info`、`export_zip`、`import_zip`。
 
-**OneDrive 云端备份** —— `is_onedrive_connected`、`upload_to_onedrive`、`download_onedrive`、`get_onedrive_result`。**不开放登录工具**：用户需在设备上登录 Microsoft（饲养者信息 → 登录 OneDrive）。`upload_to_onedrive` / `download_onedrive` 先返回 `{"status":"started"}`，结果通过 `get_onedrive_result` 获取。
+**OneDrive 云端备份** —— `is_onedrive_connected`、`upload_to_onedrive`、`download_onedrive`、`get_onedrive_result`。**不开放登录工具**：用户需在设备上登录 Microsoft（饲养者信息 → 登录 OneDrive）。`upload_to_onedrive` / `download_onedrive` 先返回 `{"status":"started"}` 并把上一次结果重置为 `pending`，结果通过 `get_onedrive_result` 获取；访问令牌过期会自动静默续期，只有 refresh token 失效时才需要用户重新登录。`download_onedrive` 是**增量补齐**：先入库 `data.json`、再逐文件比对（名字 + 大小 + SHA-1，一致的跳过），单文件失败不影响其它文件，重复调用即可继续补齐。注意：备份中包含的档案及其记录会按 id **覆盖**本地版本（上次上传之后本地新增的记录会被覆盖而非合并），备份里没有的档案则原样保留。
 
 图片随档案/记录操作一起处理，而非单独导入：`create_record`/`update_record` 接受 `images` 数组，`create_profile`/`update_profile` 接受 `avatarData`。单张图片可以给 `uri`（content:/file:）或 base64 `data`（可带 `extension`/`mimeType`），并存入应用私有目录。`update_record` 还能用 `imagesMode`（`append`/`replace`，默认 `replace`）决定追加还是覆盖，用 `removeImages`（数组内填图片 id，通过 `get_record` 读取）删除指定图片。Markdown 支持内联 `![alt](data:image/...;base64,....)` 图片，会自动解码并改写为私有 `file://` URI。`export_zip` 返回 base64 `data`（或写到 `targetUri`），`import_zip` 接受 base64 `data`（或 `uri`）。
 
@@ -195,7 +203,7 @@ PetProfile 提供一个本地 Model Context Protocol 服务，让同一局域网
 
 - 所有数据通过 Room 保存在本地数据库中。
 - 图片会复制到应用私有目录（`files/images/`），即使原图从相册删除，记录依然完整；Markdown 中的图片引用会改写为这些文件。
-- ZIP 导出会打包相关图片，并在导入时恢复到应用私有目录；唯一文件名避免跨设备冲突。
+- ZIP 导出会打包相关图片，并在导入时恢复到应用私有目录；唯一文件名避免跨设备冲突。引用存在但文件缺失时，`data.json` 里的引用会保留、打包时跳过该图，所以「等待云端补齐图片」的库依然可以导出。
 - 应用为本地优先版本；可选的 OneDrive 备份会自动把数据库备份/恢复到你的 OneDrive，但即使不用它，应用也完全离线可用。
 
 ## 仓库与反馈

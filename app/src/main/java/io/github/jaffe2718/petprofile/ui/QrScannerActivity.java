@@ -239,7 +239,8 @@ public class QrScannerActivity extends AppCompatActivity {
 
     private void handleLanTransfer(LanTransferPayload payload) {
         Toast.makeText(this, R.string.transfer_lan_connecting, Toast.LENGTH_LONG).show();
-        Async.run(() -> {
+        // A transfer streams a whole profile tree, so it must not occupy the data-read executor.
+        Async.runLong(() -> {
             try {
                 byte[] zipBytes = LanTransferClient.download(payload, KeeperInfoManager.load(QrScannerActivity.this));
                 ExportBundle bundle = BackupManager.readZipBytes(QrScannerActivity.this, zipBytes);

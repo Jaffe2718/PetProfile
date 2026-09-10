@@ -4,18 +4,47 @@ import android.content.Context;
 import android.net.Uri;
 import android.webkit.MimeTypeMap;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class ImageStorage {
-    private static final String IMAGE_DIR = "images";
+    public static final String IMAGE_DIR = "images";
+    private static final int NAME_LENGTH = 16;
+    private static final SecureRandom RANDOM = new SecureRandom();
     private static final Pattern URI_PATTERN = Pattern.compile("(?i)(content|file)://[^\\s)\\]}\"']+");
 
     private ImageStorage() {
+    }
+
+    /**
+     * The single, unified image-name rule: base64url(sha256(file content || timestamp || random salt)).
+     * A name is assigned once (when the image is saved/imported) and is never changed afterwards, so
+     * export, import, ZIP and OneDrive round-trips all keep the exact same file name.
+     */
+    public static String nameForContent(byte[] data, String extension) {
+        byte[] timestamp = ByteBuffer.allocate(8).putLong(System.currentTimeMillis()).array();
+        byte[] salt = new byte[8];
+        RANDOM.nextBytes(salt);
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(data);
+            digest.update(timestamp);
+            digest.update(salt);
+            String name = Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(digest.digest())
+                    .substring(0, NAME_LENGTH);
+            return name + normalizeExtension(extension);
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to name image", e);
+        }
     }
 
     public static String copyToPrivateStorage(Context context, String uriText) {
@@ -38,29 +67,22 @@ public final class ImageStorage {
             if (input == null) {
                 return uriText;
             }
-            File dir = new File(context.getFilesDir(), IMAGE_DIR);
-            if (!dir.exists() && !dir.mkdirs()) {
-                return uriText;
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            int read;
+            while ((read = input.read(chunk)) != -1) {
+                buffer.write(chunk, 0, read);
             }
-            String extension = guessExtension(context, uri);
-            File out = new File(dir, IdUtil.timeBasedId() + extension);
-            try (FileOutputStream output = new FileOutputStream(out)) {
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = input.read(buffer)) != -1) {
-                    output.write(buffer, 0, read);
-                }
-            }
-            return Uri.fromFile(out).toString();
+            String saved = saveBytes(context, buffer.toByteArray(), guessExtension(context, uri));
+            return saved == null ? uriText : saved;
         } catch (Exception ignored) {
             return uriText;
         }
     }
 
     /**
-     * Saves raw bytes into app-private storage under {@code files/images/} using the same
-     * time-based naming rule as {@link #copyToPrivateStorage}. Returns a {@code file://} URI, or
-     * {@code null} on failure.
+     * Saves raw bytes into app-private storage under {@code files/images/} using the unified
+     * content-based naming rule. Returns a {@code file://} URI, or {@code null} on failure.
      */
     public static String saveBytes(Context context, byte[] data, String extension) {
         if (data == null || data.length == 0) {
@@ -71,8 +93,7 @@ public final class ImageStorage {
             if (!dir.exists() && !dir.mkdirs()) {
                 return null;
             }
-            String ext = normalizeExtension(extension);
-            File out = new File(dir, IdUtil.timeBasedId() + ext);
+            File out = new File(dir, nameForContent(data, extension));
             try (FileOutputStream output = new FileOutputStream(out)) {
                 output.write(data);
             }

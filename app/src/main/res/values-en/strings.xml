@@ -214,11 +214,14 @@
     <string name="update_download">Download</string>
     <string name="keeper_home_label">Home</string>
     <string name="keeper_nickname_hint">Keeper nickname</string>
+    <string name="keeper_name_label">Name</string>
     <!-- OneDrive -->
     <string name="onedrive_title">OneDrive Backup</string>
     <string name="onedrive_login_hint">Connect OneDrive to back up (needs an Azure app client ID)</string>
     <string name="onedrive_login">Sign in to OneDrive</string>
     <string name="onedrive_logout">Sign out</string>
+    <string name="onedrive_logout_confirm_title">Sign out of OneDrive?</string>
+    <string name="onedrive_logout_confirm_message">You will need to sign in again to upload or restore. Backups already stored in the cloud are not deleted.</string>
     <string name="onedrive_connected">Connected to OneDrive</string>
     <string name="onedrive_connected_as">Connected to OneDrive: %1$s</string>
     <string name="onedrive_upload">Back up to OneDrive</string>
@@ -228,4 +231,18 @@
     <string name="onedrive_not_signed_in">Not signed in to a Microsoft account</string>
     <string name="onedrive_no_client_id">OneDrive client ID not set; set msalClientId in build.gradle</string>
     <string name="onedrive_busy">Syncing, please wait</string>
+    <string name="sync_channel_name">Cloud sync</string>
+    <string name="sync_progress">%1$d/%2$d files</string>
+    <string name="sync_title_upload">Uploading to OneDrive</string>
+    <string name="sync_title_download">Syncing from OneDrive</string>
+    <string name="onedrive_failed">Sync failed: %1$s</string>
+    <string name="onedrive_auth_failed">Sign-in failed: %1$s</string>
+    <string name="onedrive_auth_cancelled">Sign-in cancelled</string>
+    <string name="onedrive_state_mismatch">Sign-in check failed, please try again</string>
+    <string name="onedrive_no_token">No access token received, please try again</string>
+    <string name="onedrive_session_expired">The OneDrive session expired; please sign in again</string>
+    <string name="onedrive_no_cloud_data">No backup in the cloud yet</string>
+    <string name="onedrive_restore_empty">The cloud backup holds no profiles; the restore was cancelled</string>
+    <string name="onedrive_synced_skipped">Synced to OneDrive (%1$d images missing locally and skipped)</string>
+    <string name="onedrive_restored_incomplete">Restored from OneDrive (%1$d images missing in the cloud, %2$d failed to download; the next sync continues)</string>
 </resources>

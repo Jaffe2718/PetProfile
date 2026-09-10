@@ -214,11 +214,14 @@
     <string name="update_download">下載</string>
     <string name="keeper_home_label">常駐地</string>
     <string name="keeper_nickname_hint">飼養者暱稱</string>
+    <string name="keeper_name_label">姓名</string>
     <!-- OneDrive -->
     <string name="onedrive_title">OneDrive 備份</string>
     <string name="onedrive_login_hint">連接 OneDrive 以便備份（需在 Azure 註冊並填入 client ID）</string>
     <string name="onedrive_login">登入 OneDrive</string>
     <string name="onedrive_logout">登出</string>
+    <string name="onedrive_logout_confirm_title">登出 OneDrive？</string>
+    <string name="onedrive_logout_confirm_message">登出後需要重新登入才能上傳或復原；雲端已存在的備份不會被刪除。</string>
     <string name="onedrive_connected">已連接 OneDrive</string>
     <string name="onedrive_connected_as">已連接 OneDrive：%1$s</string>
     <string name="onedrive_upload">備份到 OneDrive</string>
@@ -228,4 +231,18 @@
     <string name="onedrive_not_signed_in">尚未登入 Microsoft 帳戶</string>
     <string name="onedrive_no_client_id">未設定 OneDrive client ID，請在 build.gradle 填 msalClientId</string>
     <string name="onedrive_busy">正在同步，請稍候</string>
+    <string name="sync_channel_name">雲端同步</string>
+    <string name="sync_progress">%1$d/%2$d 個檔案</string>
+    <string name="sync_title_upload">正在上傳到 OneDrive</string>
+    <string name="sync_title_download">正在從 OneDrive 同步</string>
+    <string name="onedrive_failed">同步失敗：%1$s</string>
+    <string name="onedrive_auth_failed">登入失敗：%1$s</string>
+    <string name="onedrive_auth_cancelled">已取消登入</string>
+    <string name="onedrive_state_mismatch">登入校驗失敗，請重試</string>
+    <string name="onedrive_no_token">未取得存取權杖，請重試</string>
+    <string name="onedrive_session_expired">OneDrive 登入已失效，請重新登入</string>
+    <string name="onedrive_no_cloud_data">雲端還沒有備份資料</string>
+    <string name="onedrive_restore_empty">雲端備份為空，已取消復原</string>
+    <string name="onedrive_synced_skipped">已同步到 OneDrive（%1$d 張圖片本機缺失，已略過）</string>
+    <string name="onedrive_restored_incomplete">已從 OneDrive 復原（雲端缺失 %1$d 張圖片，%2$d 張下載失敗；下次同步會繼續補齊）</string>
 </resources>

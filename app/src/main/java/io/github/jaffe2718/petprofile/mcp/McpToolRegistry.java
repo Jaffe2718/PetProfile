@@ -239,7 +239,7 @@ public final class McpToolRegistry {
                 obj(),
                 this::uploadOneDrive));
         register(writeTool("download_onedrive",
-                "Restore the database from the OneDrive backup. Requires the user to be signed in to OneDrive. Returns immediately; poll get_onedrive_result for the outcome.",
+                "Restore from the OneDrive backup. Incremental and resumable: data.json is imported first, then only the missing/changed images are transferred (unchanged files are skipped by name + size + SHA-1), so a partial run is simply completed by the next call. Profiles and records contained in the backup overwrite the local ones by id; local profiles created after the last upload are kept; an image that has not arrived yet is stored as an empty reference and renders as nothing. Returns immediately; poll get_onedrive_result for the outcome.",
                 obj(),
                 this::downloadOneDrive));
         register(tool("get_onedrive_result",
@@ -1290,18 +1290,11 @@ public final class McpToolRegistry {
         requireOneDriveSignedIn(ctx);
         requireNotBusy();
         OneDriveBackupManager.setCloudBusy(true);
+        OneDriveBackupManager.setLastResult(null);
         PetRepository.get(ctx).exportAll(new Async.Result<ExportBundle>() {
             @Override
             public void onSuccess(ExportBundle bundle) {
-                Async.run(() -> {
-                    try {
-                        byte[] zipBytes = BackupManager.createZipBytes(ctx, bundle);
-                        OneDriveBackupManager.upload(ctx, zipBytes, noop());
-                    } catch (Throwable t) {
-                        OneDriveBackupManager.setCloudBusy(false);
-                        OneDriveBackupManager.setLastResult(t.getMessage());
-                    }
-                });
+                OneDriveBackupManager.upload(ctx, bundle, noop());
             }
 
             @Override
@@ -1320,6 +1313,7 @@ public final class McpToolRegistry {
         requireOneDriveSignedIn(ctx);
         requireNotBusy();
         OneDriveBackupManager.setCloudBusy(true);
+        OneDriveBackupManager.setLastResult(null);
         OneDriveBackupManager.download(ctx, noop());
         JsonObject result = new JsonObject();
         result.addProperty("status", "started");

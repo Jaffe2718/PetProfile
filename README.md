@@ -17,7 +17,7 @@ The project is written in Java and built with Android Studio and Gradle.
 - **Routine reminders** — per-profile feeding / watering / cleaning reminders with weekly or one-time schedules, a completion policy (Skip / Retain), and system notifications.
 - **Daily todo** — a dedicated screen listing today's tasks with due/upcoming status, per-pet filters, search, and completion tracking.
 - **Backup & sharing** — ZIP export/import, PNG long-image sharing, and QR + same-LAN transfer of complete profile trees (including ancestors and images).
-- **Cloud backup (OneDrive)** — optional upload/download of the whole database as a ZIP to the signed-in user's own OneDrive (in a private app folder), with Microsoft sign-in done on-device.
+- **Cloud backup (OneDrive)** — optional incremental sync of the whole database to the signed-in user's own OneDrive (in a private app folder): only the files that changed are transferred, and a restore can be interrupted and resumed. Microsoft sign-in is done on-device.
 - **Keeper info** — a global keeper profile (nickname + home place) that pre-fills transfer and archive metadata, plus an in-page OneDrive login.
 - **Localization** — Simplified Chinese, Traditional Chinese (Hong Kong), English, and Japanese.
 
@@ -67,18 +67,26 @@ The project is written in Java and built with Android Studio and Gradle.
 
 ### Backup, sharing & transfer
 
-- ZIP export/import covers the whole database: profiles, records, attributes, images, and keeper info.
+- ZIP export/import covers the whole database: profiles, records, attributes, images, and keeper info. An image file that is missing on disk is skipped rather than failing the export.
 - PNG long-image sharing renders a profile card followed by every record, including attributes and Markdown notes.
 - QR + same-LAN transfer: the QR code carries only connection metadata while the full profile tree (including ancestors and images) is streamed over TCP.
 - When transferring, an archive (transferred out) record is added, and ancestor profiles that are not present locally are archived as transferred so bloodlines remain traceable.
 
 ### Cloud backup / restore (OneDrive)
 
-The **More** page has **Upload to cloud** / **Sync from cloud** (and the Keeper Info page has the same pair) that back up the whole database as a ZIP to the signed-in user's own OneDrive, and restore it from there.
+The **More** page has **Upload to cloud** / **Sync from cloud** (and the Keeper Info page has the same pair) that back up the whole database to the signed-in user's own OneDrive, and restore it from there.
 
 - Microsoft sign-in uses the authorization-code + PKCE flow on-device (no server, no client secret), so the app does **not** need Google-style OAuth consent verification. You register the app once in Azure (a client ID, a mobile/desktop redirect URI, and the `Files.ReadWrite.AppFolder` delegated scope), then put the client ID in `app/build.gradle` (`def msalClientId = ...`). Users sign in to their own Microsoft account inside the app.
-- The backup is stored in the app's private OneDrive folder (`/me/drive/special/approot`), so it doesn't clutter the user's Drive, and is named `pet-profile-backup.zip`; images are included.
-- While an upload/download is running, the buttons stay disabled (globally, even after leaving the page) and further taps report "syncing, please wait".
+- The cloud copy is an **unpacked tree** (`data.json` + `images/<name>`) in the app's private OneDrive folder (`/me/drive/special/approot`) rather than a single ZIP, so it doesn't clutter the user's Drive. Image names never change, so a sync is a pure name/size/SHA-1 comparison and only transfers what changed:
+  - Upload (latest wins): `data.json` is always rewritten; an image is uploaded only when the cloud has no copy of that name or its copy differs; cloud images the new state no longer references are pruned. Images go up **before** `data.json`, and the prune runs last, so the cloud never holds a `data.json` that references an image it lacks and an interrupted sync never damages the existing backup.
+  - Download (incremental, resumable): `data.json` is fetched and **imported first**, so the records appear immediately; each image is then judged **file by file** — an identical name + size + SHA-1 is skipped, anything else is downloaded and stored straight to disk. One failing file does not affect the others, and the next sync simply fills in the rest. A transfer that stalls for five minutes counts as failed for that file (the connection phase is capped at 30 s), and the data read that happens during the sync is not blocked by it. There is no confirmation dialog and no local snapshot: ZIP export/import is the backup and rollback path.
+  - What a restore replaces: the profiles **contained in the backup** are replaced by id together with their records, so a record added locally to such a profile **after** the last upload is replaced by the cloud version instead of being merged. Profiles the backup does not contain are left untouched; export a ZIP first if you need to keep that kind of local change.
+  - An image reference is allowed to be **empty**: it already points at its final path, the UI just renders nothing for it (list/detail/pedigree avatars stay blank, Markdown is treated as an image-less note), and the reference becomes valid by itself once the image is stored. ZIP export and LAN transfer skip a missing image and continue instead of failing.
+- An expired access token is renewed silently with the stored refresh token, so the user does not sign in again every hour; only a rejected refresh token requires a fresh login ("the OneDrive session expired; please sign in again").
+- When the restore finishes, the foreground data screens (profile list, record list and detail, daily todo, chart) are asked to reload.
+- Signing out (the **Sign out** button on the Keeper Info page) asks for confirmation first: it only clears the tokens stored on this device and never deletes the backups already in the cloud.
+- A backup written by ≤ 0.3.0 (a single `pet-profile-backup.zip`) is still recognized and restored; the stale file is removed after the next successful upload.
+- While an upload/download is running, the buttons stay disabled (globally, even after leaving the page) and further taps report "syncing, please wait"; a `x/y files` progress notification is shown (needs notification permission) and it clears itself when the sync ends or when the app starts again after being killed mid-sync.
 - The **check update** button queries the latest GitHub release (`v{x}.{y}.{z}`) and, if newer than the installed version, offers the APK download from `https://github.com/Jaffe2718/PetProfile/releases/download/v{x}.{y}.{z}/petprofile.apk`.
 
 ### Keeper info
@@ -185,7 +193,7 @@ The server exposes these tools over JSON-RPC (`initialize` / `tools/list` / `too
 
 **Write** — `create_profile`, `update_profile`, `delete_profile`, `set_profile_parents`, `set_profile_custom_fields`, `create_record`, `update_record`, `delete_record`, `create_routine`, `update_routine`, `delete_routine`, `complete_routine`, `save_keeper_info`, `export_zip`, `import_zip`.
 
-**OneDrive cloud backup** — `is_onedrive_connected`, `upload_to_onedrive`, `download_onedrive`, `get_onedrive_result`. No login tool is exposed: the user must sign in to Microsoft on the device (Keeper Info → 登录 OneDrive). `upload_to_onedrive` / `download_onedrive` return `{"status":"started"}` and the outcome is captured via `get_onedrive_result`.
+**OneDrive cloud backup** — `is_onedrive_connected`, `upload_to_onedrive`, `download_onedrive`, `get_onedrive_result`. No login tool is exposed: the user must sign in to Microsoft on the device (Keeper Info → 登录 OneDrive). `upload_to_onedrive` / `download_onedrive` return `{"status":"started"}`, reset the previous result to `pending`, and the outcome is captured via `get_onedrive_result`; an expired access token is renewed silently, so the user only has to sign in again if the refresh token was revoked. `download_onedrive` is **incremental**: data.json is imported first, then each file is compared (name + size + SHA-1, identical ones skipped), a single failing file does not affect the others, and calling it again simply fills in whatever is still missing. Note that the profiles (and their records) contained in the backup replace the local ones by id — a record added locally after the last upload is overwritten, not merged — while local profiles absent from the backup are kept.
 
 Images are handled as part of the profile/record operations rather than a separate import: `create_record` / `update_record` accept an `images` array, and `create_profile` / `update_profile` accept `avatarData`. An image entry can be a content/`file:` `uri` or base64 `data` (with optional `extension` / `mimeType`) and is stored in app-private storage. `update_record` also supports `imagesMode` (`append` / `replace`, default `replace`) to decide whether to add to or replace the existing images, and `removeImages` (image ids, readable via `get_record`) to delete specific images. Markdown notes may embed inline `![alt](data:image/...;base64,....)` images, which are decoded and rewritten to private `file://` URIs. `export_zip` returns base64 `data` (or writes to `targetUri`) and `import_zip` accepts base64 `data` (or a `uri`).
 
@@ -197,7 +205,7 @@ After a successful write, the foreground data screens (profile list, records, da
 
 - Everything is stored locally in a Room database.
 - Images are copied into app-private storage (`files/images/`), so records stay intact even if the original photo is removed from the gallery. Markdown image references are rewritten to these stored files.
-- ZIP export packs the related images and restores them to app-private storage on import; unique filenames prevent cross-device collisions.
+- ZIP export packs the related images and restores them to app-private storage on import; unique filenames prevent cross-device collisions. A reference whose file is missing is kept in `data.json` and simply skipped when packing, so a library that is still waiting for a cloud restore to fill it in can still be exported.
 - The app is local-first. An optional OneDrive backup lets you back up / restore the database to your own OneDrive, but the app works fully offline without it.
 
 ## Repository & feedback
