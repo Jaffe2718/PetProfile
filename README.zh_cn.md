@@ -145,9 +145,12 @@ app/build/outputs/apk/debug/app-debug.apk
 工程配置：
 
 - `minSdk`：26
-- `targetSdk`：35
-- `compileSdk`：35
+- `targetSdk`：37
+- `compileSdk`：37
+- Android Gradle Plugin：8.13.2（Gradle 8.13）
 - Java 兼容版本：17
+
+release 产物输出为 `app/build/outputs/apk/release/petprofile.apk`，与 App 内「检查更新」从 GitHub release 下载的文件名一致。
 
 ## 权限
 

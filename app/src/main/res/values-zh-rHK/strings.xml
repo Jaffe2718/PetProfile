@@ -23,7 +23,6 @@
     <string name="map_provider_amap">高德</string>
     <string name="map_provider_google">Google</string>
     <string name="map_provider_osm">OSM</string>
-    <string name="action_scan_qr">掃碼匯入</string>
     <string name="action_keeper_info">飼養者資料</string>
     <string name="action_sort">排序</string>
     <string name="sort_ascending">升序</string>
@@ -82,6 +81,8 @@
     <string name="autostart_grant">去開啟</string>
     <string name="autostart_later">稍後</string>
     <string name="pick_from_gallery">從相簿選擇</string>
+    <string name="scanner_torch_off">手電筒（已關閉）</string>
+    <string name="scanner_torch_on">手電筒（已開啟）</string>
     <string name="qr_parse_failed">未能識別 QR Code，請換一張圖片</string>
     <string name="label_profile_attributes">檔案屬性</string>
     <string name="label_record_attributes">建立記錄屬性</string>

@@ -147,9 +147,12 @@ With the Android SDK and JDK 17 configured:
 Project configuration:
 
 - `minSdk`: 26
-- `targetSdk`: 35
-- `compileSdk`: 35
+- `targetSdk`: 37
+- `compileSdk`: 37
+- Android Gradle Plugin: 8.13.2 (Gradle 8.13)
 - Java compatibility: 17
+
+The release build is written as `app/build/outputs/apk/release/petprofile.apk`, the same file name the in-app update check downloads from GitHub releases.
 
 ## Permissions
 

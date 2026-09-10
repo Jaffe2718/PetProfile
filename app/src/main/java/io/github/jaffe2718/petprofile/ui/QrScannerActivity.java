@@ -3,15 +3,21 @@ package io.github.jaffe2718.petprofile.ui;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.RectF;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
@@ -20,6 +26,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.WindowCompat;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.barcode.BarcodeScanner;
@@ -46,20 +53,33 @@ public class QrScannerActivity extends AppCompatActivity {
 
     private PetRepository repository;
     private PreviewView previewView;
+    private ImageButton flashlightButton;
     private BarcodeScanner barcodeScanner;
+    private Camera camera;
+    private boolean torchOn;
     private volatile boolean processed;
     private final ExecutorService analysisExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Full-bleed camera surface: with edge-to-edge the preview reaches under the system bars.
+        // Some vendors still inset the window (a black bar above the content); the golden-section
+        // framing below compensates for that offset, so it must not be forced with layout flags,
+        // which would leave the window non-focusable and invisible to accessibility services.
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_qr_scanner);
         hideSystemBars();
         repository = PetRepository.get(this);
         previewView = findViewById(R.id.previewView);
         barcodeScanner = BarcodeScanning.getClient();
+        flashlightButton = findViewById(R.id.flashlightButton);
         findViewById(R.id.closeButton).setOnClickListener(v -> finish());
         findViewById(R.id.pickFromGalleryButton).setOnClickListener(v -> pickFromGallery());
+        flashlightButton.setOnClickListener(v -> toggleTorch());
+        applyTorchUi();
+        // The frame is drawn in golden section, so the control row is placed against it after layout.
+        previewView.post(this::placeControlsByGoldenSection);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -84,11 +104,77 @@ public class QrScannerActivity extends AppCompatActivity {
 
                 CameraSelector selector = CameraSelector.DEFAULT_BACK_CAMERA;
                 provider.unbindAll();
-                provider.bindToLifecycle(this, selector, preview, analysis);
+                camera = provider.bindToLifecycle(this, selector, preview, analysis);
+                // A device without a flash unit has nothing to toggle, so the control stays hidden.
+                flashlightButton.setVisibility(
+                        camera.getCameraInfo().hasFlashUnit() ? View.VISIBLE : View.GONE);
             } catch (Throwable t) {
                 Toast.makeText(this, t.getMessage(), Toast.LENGTH_LONG).show();
             }
         }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void toggleTorch() {
+        if (camera == null || !camera.getCameraInfo().hasFlashUnit()) {
+            return;
+        }
+        torchOn = !torchOn;
+        camera.getCameraControl().enableTorch(torchOn);
+        applyTorchUi();
+    }
+
+    /** The torch control is a plain icon on a translucent disc, filled white while it is lit. */
+    private void applyTorchUi() {
+        flashlightButton.setBackgroundResource(torchOn
+                ? R.drawable.bg_scanner_control_active
+                : R.drawable.bg_scanner_control);
+        flashlightButton.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(this,
+                torchOn ? R.color.text_primary : R.color.surface)));
+        flashlightButton.setContentDescription(getString(torchOn
+                ? R.string.scanner_torch_on
+                : R.string.scanner_torch_off));
+    }
+
+    /**
+     * Composes the screen by the golden section: the scan frame's centre splits the whole screen
+     * 0.618 : 1, and the control row divides the space under the frame 0.618 : 1 as well.
+     *
+     * <p>Both are measured against the display rather than this view, because a vendor window inset
+     * (a black bar above the content) would otherwise be counted as part of the composition and shift
+     * everything down. The offsets are converted back to view coordinates afterwards.
+     */
+    private void placeControlsByGoldenSection() {
+        int width = previewView.getWidth();
+        int height = previewView.getHeight();
+        View controls = findViewById(R.id.scannerControls);
+        View scanFrame = findViewById(R.id.scanFrameView);
+        if (width <= 0 || height <= 0 || controls == null) {
+            return;
+        }
+        int[] location = new int[2];
+        previewView.getLocationOnScreen(location);
+        int viewTop = location[1];
+        int screenHeight = previewView.getRootView().getHeight() + viewTop;
+        if (screenHeight <= 0) {
+            return;
+        }
+        float goldenCenter = screenHeight * ScanFrameView.GOLDEN / (1f + ScanFrameView.GOLDEN);
+        float centerLocal = goldenCenter - viewTop;
+        RectF frame = ScanFrameView.frameBounds(width, height, centerLocal);
+        if (scanFrame instanceof ScanFrameView) {
+            ((ScanFrameView) scanFrame).setFrameCenterY(centerLocal);
+        }
+
+        int controlsHeight = controls.getHeight() > 0
+                ? controls.getHeight()
+                : Math.round(64f * getResources().getDisplayMetrics().density);
+        float free = screenHeight - (viewTop + frame.bottom) - controlsHeight;
+        float gapBelow = Math.max(0f, free / (1f + ScanFrameView.GOLDEN));
+        int viewBottomOffset = screenHeight - (viewTop + height);
+        ViewGroup.MarginLayoutParams params =
+                (ViewGroup.MarginLayoutParams) controls.getLayoutParams();
+        params.bottomMargin = Math.round(Math.max(0f, gapBelow - viewBottomOffset));
+        controls.setLayoutParams(params);
     }
 
     private void pickFromGallery() {
@@ -278,6 +364,17 @@ public class QrScannerActivity extends AppCompatActivity {
         } else if (requestCode == REQUEST_CAMERA) {
             Toast.makeText(this, R.string.error_generic, Toast.LENGTH_SHORT).show();
             finish();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Leaving the screen releases the camera, so drop the light and keep the control in sync.
+        if (torchOn && camera != null) {
+            torchOn = false;
+            camera.getCameraControl().enableTorch(false);
+            applyTorchUi();
         }
     }
 

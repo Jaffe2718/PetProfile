@@ -23,7 +23,6 @@
     <string name="map_provider_amap">高德</string>
     <string name="map_provider_google">Google</string>
     <string name="map_provider_osm">OSM</string>
-    <string name="action_scan_qr">扫码导入</string>
     <string name="action_keeper_info">饲养者信息</string>
     <string name="keeper_nickname_hint">饲养者昵称</string>
     <string name="keeper_name_label">姓名</string>
@@ -131,6 +130,8 @@
     <string name="autostart_grant">去开启</string>
     <string name="autostart_later">稍后</string>
     <string name="pick_from_gallery">从相册选择</string>
+    <string name="scanner_torch_off">手电筒（已关闭）</string>
+    <string name="scanner_torch_on">手电筒（已开启）</string>
     <string name="qr_parse_failed">未能识别二维码，请换一张图片</string>
     <string name="label_profile_attributes">档案属性</string>
     <string name="label_record_attributes">建档记录属性</string>

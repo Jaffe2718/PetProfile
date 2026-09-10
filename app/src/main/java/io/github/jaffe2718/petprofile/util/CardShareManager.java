@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.net.Uri;
@@ -44,11 +45,26 @@ public final class CardShareManager {
     private static final int GAP = 28;
     private static final int IMAGE_GAP = 24;
     private static final int RECORD_IMAGE_MAX_WIDTH = WIDTH - 64 - 64;
-    private static final int AVATAR_MAX_WIDTH = 300;
-    private static final int AVATAR_BOX_SIZE = 300;
-    private static final int AVATAR_GAP = 24;
-    private static final int AVATAR_AREA_HEIGHT = 350;
     private static final int BACKGROUND = Color.rgb(245, 248, 244);
+
+    // Passport card: the first block of the shared long image, styled after the profile list item.
+    private static final int CARD_MARGIN = 24;
+    private static final float CARD_RADIUS = 28f;
+    private static final float CARD_PADDING = 36f;
+    /** Heavier than the 6px frame of the record cards below, so the profile card reads as the header. */
+    private static final float PROFILE_BORDER = 9f;
+    /** Email-style rule across the top of the whole sheet, in the card's tone. */
+    private static final float TOP_RULE_HEIGHT = 5f;
+    /** The header is blank, then the rule bisects it, then the title, each with its own padding. */
+    private static final float HEADER_TOP_PADDING = 44f;
+    private static final float TITLE_TOP_PADDING = 72f;
+    private static final float TITLE_BOTTOM_PADDING = 51f;
+    private static final float TITLE_TEXT_SIZE = 82f;
+    private static final float AVATAR_SIZE = 240f;
+    private static final float AVATAR_RADIUS = 48f;
+    private static final float AVATAR_TEXT_GAP = 32f;
+    private static final float ATTRIBUTE_NAME_WEIGHT = 0.42f;
+    private static final float ATTRIBUTE_COLUMN_GAP = 16f;
 
     private CardShareManager() {
     }
@@ -127,65 +143,266 @@ public final class CardShareManager {
     }
 
     private static void drawTopCardContent(Canvas canvas, Context context, ProfileDetails details) {
-        Paint headerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        headerPaint.setColor(Color.rgb(46, 125, 50));
-        canvas.drawRoundRect(new RectF(0, 0, WIDTH, 220), 0, 0, headerPaint);
+        RectF card = new RectF();
+        layoutTopCard(context, details, null, card);
 
-        Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        titlePaint.setColor(Color.WHITE);
-        titlePaint.setTextSize(54f);
-        titlePaint.setFakeBoldText(true);
-        canvas.drawText(context.getString(R.string.share_card_title), 48, 140, titlePaint);
+        // One tone for the whole header: the card's own background is the gender tint, while the
+        // frame and the rule above the title are a saturated shade of that same hue (never grey, and
+        // independent of the archived state).
+        int tone = genderToneColor(context, details);
+        int accent = toneBorder(tone);
 
-        Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        labelPaint.setColor(Color.rgb(90, 90, 90));
-        labelPaint.setTextSize(34f);
-        Paint valuePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        valuePaint.setColor(Color.rgb(20, 20, 20));
-        valuePaint.setTextSize(40f);
+        // Inset exactly like the card, so the rule and the card share the same left/right edges.
+        Paint rulePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        rulePaint.setColor(accent);
+        canvas.drawRect(CARD_MARGIN, HEADER_TOP_PADDING,
+                WIDTH - CARD_MARGIN, HEADER_TOP_PADDING + TOP_RULE_HEIGHT, rulePaint);
 
-        float y = 280f;
-        for (String[] line : topCardLines(context, details)) {
-            y = drawLine(canvas, labelPaint, valuePaint, line[0], line[1], y);
-        }
-        if (details.profile.avatarUri != null && !details.profile.avatarUri.trim().isEmpty()) {
-            Bitmap avatar = decodeBitmap(context, Uri.parse(details.profile.avatarUri), AVATAR_MAX_WIDTH);
-            if (avatar != null) {
-                // Center-crop a square from the middle of the source (keep the smaller
-                // dimension, crop the excess from the longer side), then scale to a
-                // fixed square. This avoids distortion and keeps the subject centered.
-                int side = Math.min(avatar.getWidth(), avatar.getHeight());
-                if (side <= 0) {
-                    side = 1;
-                }
-                int srcLeft = (avatar.getWidth() - side) / 2;
-                int srcTop = (avatar.getHeight() - side) / 2;
-                Rect src = new Rect(srcLeft, srcTop, srcLeft + side, srcTop + side);
-                RectF dst = new RectF(48, y + AVATAR_GAP,
-                        48 + AVATAR_BOX_SIZE, y + AVATAR_GAP + AVATAR_BOX_SIZE);
-                canvas.drawBitmap(avatar, src, dst, null);
-            }
-        }
+        Paint cardPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cardPaint.setColor(tone);
+        canvas.drawRoundRect(card, CARD_RADIUS, CARD_RADIUS, cardPaint);
+
+        Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        borderPaint.setStyle(Paint.Style.STROKE);
+        borderPaint.setStrokeWidth(PROFILE_BORDER);
+        borderPaint.setColor(accent);
+        canvas.drawRoundRect(card, CARD_RADIUS, CARD_RADIUS, borderPaint);
+
+        layoutTopCard(context, details, canvas, null);
     }
 
-    private static List<String[]> topCardLines(Context context, ProfileDetails details) {
-        List<String[]> lines = new ArrayList<>();
-        ProfileCustomFieldEntity nickname = findNicknameField(details.customFields);
-        if (nickname != null && nickname.textValue != null && !nickname.textValue.trim().isEmpty()) {
-            lines.add(new String[]{context.getString(R.string.label_nickname), nickname.textValue.trim()});
+    /**
+     * Walks the header top-down with a single cursor. With {@code canvas == null} it only advances
+     * that cursor to measure; otherwise it paints. Both modes share every position, so the measured
+     * height and the painted content can never disagree — which is what keeps the stacked cards
+     * below from overlapping.
+     *
+     * <p>The title sits outside the card, under the sheet's header rule; the card itself starts below
+     * the title.
+     *
+     * @param cardOut optional; receives the rectangle of the card itself
+     * @return the height of the whole header block, including the margin under it
+     */
+    private static float layoutTopCard(Context context, ProfileDetails details, Canvas canvas, RectF cardOut) {
+        float contentLeft = CARD_MARGIN + CARD_PADDING;
+        float contentRight = WIDTH - CARD_MARGIN - CARD_PADDING;
+
+        Paint titlePaint = textPaint(TITLE_TEXT_SIZE, context.getColor(R.color.text_primary), true);
+        Paint namePaint = textPaint(46f, context.getColor(R.color.text_primary), true);
+        Paint idPaint = textPaint(34f, context.getColor(R.color.text_secondary), false);
+        Paint taxonomyPaint = textPaint(36f, context.getColor(R.color.text_primary), false);
+        Paint metaPaint = textPaint(34f, context.getColor(R.color.text_secondary), false);
+        Paint sectionPaint = textPaint(36f, context.getColor(R.color.primary), true);
+        Paint headerPaint = textPaint(32f, context.getColor(R.color.text_primary), true);
+        Paint bodyPaint = textPaint(32f, context.getColor(R.color.text_primary), false);
+
+        // Blank header, the rule that bisects it, blank space, then the title above the card.
+        float y = HEADER_TOP_PADDING + TOP_RULE_HEIGHT + TITLE_TOP_PADDING;
+        String title = context.getString(R.string.share_card_title);
+        if (canvas != null) {
+            canvas.drawText(title, (WIDTH - titlePaint.measureText(title)) / 2f,
+                    y - titlePaint.getFontMetrics().ascent, titlePaint);
         }
-        lines.add(new String[]{"ID", details.profile.id});
-        lines.add(new String[]{context.getString(R.string.label_taxonomy_section),
-                TaxonomyUtil.speciesDisplay(details.profile)});
+        y += lineHeightOf(titlePaint) + TITLE_BOTTOM_PADDING;
+
+        float cardTop = y;
+        y += CARD_PADDING;
+
+        // Avatar and the identity column beside it.
+        float columnLeft = contentLeft + AVATAR_SIZE + AVATAR_TEXT_GAP;
+        float columnWidth = contentRight - columnLeft;
+        List<StaticLayout> column = new ArrayList<>();
+        ProfileCustomFieldEntity nicknameField = findNicknameField(details.customFields);
+        String nickname = nicknameField == null || nicknameField.textValue == null
+                ? "" : nicknameField.textValue.trim();
+        if (!nickname.isEmpty()) {
+            column.add(layoutText(nickname, namePaint, columnWidth));
+        }
+        String id = details.profile.id == null ? "" : details.profile.id.trim();
+        if (!id.isEmpty()) {
+            column.add(layoutText("ID  " + id, idPaint, columnWidth));
+        }
+        String taxonomy = TaxonomyUtil.speciesDisplay(details.profile);
+        if (taxonomy != null && !taxonomy.trim().isEmpty()) {
+            column.add(layoutText(taxonomy, taxonomyPaint, columnWidth));
+        }
+        String meta = genderAndSource(context, details);
+        if (!meta.isEmpty()) {
+            column.add(layoutText(meta, metaPaint, columnWidth));
+        }
+
+        float columnHeight = 0f;
+        for (StaticLayout line : column) {
+            columnHeight += line.getHeight();
+        }
+        float rowHeight = Math.max(AVATAR_SIZE, columnHeight);
+        if (canvas != null) {
+            drawAvatar(canvas, context, details,
+                    new RectF(contentLeft, y, contentLeft + AVATAR_SIZE, y + AVATAR_SIZE));
+            float columnTop = y + Math.max(0f, (rowHeight - columnHeight) / 2f);
+            canvas.save();
+            canvas.translate(columnLeft, columnTop);
+            for (StaticLayout line : column) {
+                line.draw(canvas);
+                canvas.translate(0f, line.getHeight());
+            }
+            canvas.restore();
+        }
+        y += rowHeight + 32f;
+
+        // Profile attributes, laid out like the expandable table on the profile list.
+        List<ProfileCustomFieldEntity> attributes = new ArrayList<>();
         if (details.customFields != null) {
             for (ProfileCustomFieldEntity field : details.customFields) {
-                if (field == nickname) {
-                    continue;
+                if (field != nicknameField) {
+                    attributes.add(field);
                 }
-                lines.add(new String[]{field.fieldName == null ? "" : field.fieldName, fieldValue(field)});
             }
         }
-        return lines;
+        if (!attributes.isEmpty()) {
+            String section = context.getString(R.string.label_profile_attributes) + " (" + attributes.size() + ")";
+            if (canvas != null) {
+                canvas.drawText(section, contentLeft, y - sectionPaint.getFontMetrics().ascent, sectionPaint);
+            }
+            y += lineHeightOf(sectionPaint) + 18f;
+
+            float nameWidth = (contentRight - contentLeft) * ATTRIBUTE_NAME_WEIGHT;
+            float valueX = contentLeft + nameWidth + ATTRIBUTE_COLUMN_GAP;
+            float valueWidth = contentRight - valueX;
+            if (canvas != null) {
+                canvas.drawText(context.getString(R.string.label_field_name), contentLeft,
+                        y - headerPaint.getFontMetrics().ascent, headerPaint);
+                canvas.drawText(context.getString(R.string.label_value), valueX,
+                        y - headerPaint.getFontMetrics().ascent, headerPaint);
+            }
+            y += lineHeightOf(headerPaint) + 10f;
+
+            for (ProfileCustomFieldEntity field : attributes) {
+                StaticLayout nameLayout = layoutText(field.fieldName == null ? "" : field.fieldName,
+                        bodyPaint, nameWidth);
+                StaticLayout valueLayout = layoutText(fieldValue(field), bodyPaint, valueWidth);
+                if (canvas != null) {
+                    canvas.save();
+                    canvas.translate(contentLeft, y);
+                    nameLayout.draw(canvas);
+                    canvas.restore();
+                    canvas.save();
+                    canvas.translate(valueX, y);
+                    valueLayout.draw(canvas);
+                    canvas.restore();
+                }
+                y += Math.max(nameLayout.getHeight(), valueLayout.getHeight()) + 14f;
+            }
+            y -= 14f;
+        }
+
+        if (cardOut != null) {
+            cardOut.set(CARD_MARGIN, cardTop, WIDTH - CARD_MARGIN, y + CARD_PADDING);
+        }
+        return y + CARD_PADDING + CARD_MARGIN;
+    }
+
+    private static Paint textPaint(float size, int color, boolean bold) {
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(color);
+        paint.setTextSize(size);
+        paint.setFakeBoldText(bold);
+        return paint;
+    }
+
+    private static StaticLayout layoutText(String text, Paint paint, float width) {
+        String value = text == null ? "" : text;
+        return StaticLayout.Builder
+                .obtain(value, 0, value.length(), new TextPaint(paint), Math.max(1, (int) width))
+                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                .setIncludePad(false)
+                .build();
+    }
+
+    private static float lineHeightOf(Paint paint) {
+        Paint.FontMetrics metrics = paint.getFontMetrics();
+        return metrics.descent - metrics.ascent;
+    }
+
+    /** Gender tint used by the card background, the profile list and nothing else: never grey. */
+    private static int genderToneColor(Context context, ProfileDetails details) {
+        String gender = details.profile.gender;
+        if ("MALE".equals(gender)) {
+            return context.getColor(R.color.profile_male_bg);
+        }
+        if ("FEMALE".equals(gender)) {
+            return context.getColor(R.color.profile_female_bg);
+        }
+        return context.getColor(R.color.profile_unknown_bg);
+    }
+
+    /**
+     * A saturated shade of the same hue, used for the card frame and the header rule. Scaling the
+     * channels down (the obvious "darken") would drain the colour and read as grey, so the hue is
+     * kept and the saturation raised instead.
+     */
+    private static int toneBorder(int color) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(color, hsv);
+        hsv[1] = Math.max(0.28f, Math.min(1f, hsv[1] * 2.6f));
+        hsv[2] = Math.max(0.35f, hsv[2] * 0.86f);
+        return Color.HSVToColor(Color.alpha(color), hsv);
+    }
+
+    /** Gender symbol and establishment source, joined the way the profile list shows them. */
+    private static String genderAndSource(Context context, ProfileDetails details) {
+        List<String> parts = new ArrayList<>();
+        String gender = details.profile.gender;
+        if ("MALE".equals(gender)) {
+            parts.add("♂");
+        } else if ("FEMALE".equals(gender)) {
+            parts.add("♀");
+        }
+        String source = sourceLabel(context, details.establishmentSource);
+        if (source != null) {
+            parts.add(source);
+        }
+        return String.join(" · ", parts);
+    }
+
+    private static String sourceLabel(Context context, String source) {
+        if ("WILD".equals(source)) {
+            return context.getString(R.string.record_establishment_source_wild);
+        }
+        if ("PURCHASE".equals(source)) {
+            return context.getString(R.string.record_establishment_source_purchase);
+        }
+        if ("BREED".equals(source)) {
+            return context.getString(R.string.record_establishment_source_breed);
+        }
+        return null;
+    }
+
+    /** A centre-cropped avatar in a rounded square, with the shared avatar background behind it. */
+    private static void drawAvatar(Canvas canvas, Context context, ProfileDetails details, RectF box) {
+        Paint background = new Paint(Paint.ANTI_ALIAS_FLAG);
+        background.setColor(context.getColor(R.color.avatar_background));
+        canvas.drawRoundRect(box, AVATAR_RADIUS, AVATAR_RADIUS, background);
+        if (details.profile.avatarUri == null || details.profile.avatarUri.trim().isEmpty()) {
+            return;
+        }
+        Bitmap avatar = decodeBitmap(context, Uri.parse(details.profile.avatarUri), (int) AVATAR_SIZE);
+        if (avatar == null) {
+            return;
+        }
+        int side = Math.min(avatar.getWidth(), avatar.getHeight());
+        if (side <= 0) {
+            return;
+        }
+        int srcLeft = (avatar.getWidth() - side) / 2;
+        int srcTop = (avatar.getHeight() - side) / 2;
+        Rect src = new Rect(srcLeft, srcTop, srcLeft + side, srcTop + side);
+        canvas.save();
+        Path clip = new Path();
+        clip.addRoundRect(box, AVATAR_RADIUS, AVATAR_RADIUS, Path.Direction.CW);
+        canvas.clipPath(clip);
+        canvas.drawBitmap(avatar, src, box, null);
+        canvas.restore();
     }
 
     private static ProfileCustomFieldEntity findNicknameField(List<ProfileCustomFieldEntity> fields) {
@@ -207,42 +424,8 @@ public final class CardShareManager {
         return field.textValue == null ? "" : field.textValue;
     }
 
-    private static float drawLine(Canvas canvas, Paint label, Paint value, String name, String text, float y) {
-        canvas.drawText(name == null ? "" : name, 48, y, label);
-        StaticLayout layout = layoutValue(text == null ? "" : text, value);
-        canvas.save();
-        canvas.translate(360f, y + value.getFontMetrics().ascent);
-        layout.draw(canvas);
-        canvas.restore();
-        return y + Math.max(74f, layout.getHeight() + 18f);
-    }
-
-    private static StaticLayout layoutValue(String text, Paint valuePaint) {
-        TextPaint textPaint = new TextPaint(valuePaint);
-        return StaticLayout.Builder.obtain(text, 0, text.length(), textPaint, WIDTH - 360 - 48)
-                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                .build();
-    }
-
     private static int topCardHeight(Context context, ProfileDetails details) {
-        Paint valuePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        valuePaint.setColor(Color.rgb(20, 20, 20));
-        valuePaint.setTextSize(40f);
-
-        float y = 280f;
-        for (String[] line : topCardLines(context, details)) {
-            y += lineHeight(line[1], valuePaint);
-        }
-        if (details.profile.avatarUri != null && !details.profile.avatarUri.trim().isEmpty()) {
-            y += AVATAR_AREA_HEIGHT;
-        } else {
-            y += 24f;
-        }
-        return (int) (y + 40f);
-    }
-
-    private static float lineHeight(String text, Paint valuePaint) {
-        return Math.max(74f, layoutValue(text == null ? "" : text, valuePaint).getHeight() + 18f);
+        return (int) Math.ceil(layoutTopCard(context, details, null, null));
     }
 
     private static int recordBoxHeight(Context context, Markwon markwon, RecordEntity record,

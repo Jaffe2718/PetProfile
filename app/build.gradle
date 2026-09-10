@@ -4,7 +4,8 @@ plugins {
 
 android {
     namespace 'io.github.jaffe2718.petprofile'
-    compileSdk 35
+    compileSdk 37
+    compileSdkMinor 0
 
     signingConfigs {
         release {
@@ -23,9 +24,9 @@ android {
     defaultConfig {
         applicationId "io.github.jaffe2718.petprofile"
         minSdk 26
-        targetSdk 35
-        versionCode 9
-        versionName "0.3.1"
+        targetSdk 37
+        versionCode 10
+        versionName "0.3.2"
         def msalClientId = "89b7a0bb-d68f-408b-a0ec-3064170dbd33"
         buildConfigField "String", "MSAL_CLIENT_ID", "\"${msalClientId}\""
         manifestPlaceholders = [msalScheme: "msal${msalClientId}"]
@@ -59,15 +60,24 @@ dependencies {
     implementation 'androidx.room:room-runtime:2.6.1'
     annotationProcessor 'androidx.room:room-compiler:2.6.1'
 
-    implementation 'com.google.code.gson:gson:2.11.0'
-    implementation 'com.google.zxing:core:3.5.3'
+    implementation 'com.google.code.gson:gson:2.14.0'
+    implementation 'com.google.zxing:core:3.5.4'
 
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
     implementation 'androidx.camera:camera-camera2:1.4.1'
     implementation 'androidx.camera:camera-lifecycle:1.4.1'
     implementation 'androidx.camera:camera-view:1.4.1'
 
-    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    implementation 'com.github.bumptech.glide:glide:5.0.9'
     implementation 'io.noties.markwon:core:4.6.2'
     implementation 'io.noties.markwon:image-glide:4.6.2'
+}
+
+// Ship the release build as petprofile.apk, the name the in-app update check downloads.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("petprofile.apk")
+        }
+    }
 }

@@ -23,7 +23,6 @@
     <string name="map_provider_amap">AMap</string>
     <string name="map_provider_google">Google</string>
     <string name="map_provider_osm">OSM</string>
-    <string name="action_scan_qr">Scan QR</string>
     <string name="action_keeper_info">Keeper Info</string>
     <string name="action_sort">Sort</string>
     <string name="sort_ascending">Ascending</string>
@@ -82,6 +81,8 @@
     <string name="autostart_grant">Open settings</string>
     <string name="autostart_later">Later</string>
     <string name="pick_from_gallery">Pick from gallery</string>
+    <string name="scanner_torch_off">Flashlight (off)</string>
+    <string name="scanner_torch_on">Flashlight (on)</string>
     <string name="qr_parse_failed">No QR code recognized, try another image</string>
     <string name="label_profile_attributes">Profile Attributes</string>
     <string name="label_record_attributes">Establishment Record Attributes</string>
