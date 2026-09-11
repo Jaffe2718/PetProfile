@@ -87,7 +87,7 @@ The **More** page has **Upload to cloud** / **Sync from cloud** (and the Keeper 
 - Signing out (the **Sign out** button on the Keeper Info page) asks for confirmation first: it only clears the tokens stored on this device and never deletes the backups already in the cloud.
 - A backup written by ≤ 0.3.0 (a single `pet-profile-backup.zip`) is still recognized and restored; the stale file is removed after the next successful upload.
 - While an upload/download is running, the buttons stay disabled (globally, even after leaving the page) and further taps report "syncing, please wait"; a `x/y files` progress notification is shown (needs notification permission) and it clears itself when the sync ends or when the app starts again after being killed mid-sync.
-- The **check update** button queries the latest GitHub release (`v{x}.{y}.{z}`) and, if newer than the installed version, offers the APK download from `https://github.com/Jaffe2718/PetProfile/releases/download/v{x}.{y}.{z}/petprofile.apk`.
+- The **check update** button queries the latest GitHub release and, when it is newer, downloads the APK **inside the app**: an interrupted transfer resumes from the partial file, the finished file is verified against the SHA-256 the release publishes (the asset digest, falling back to the published size when there is no digest) and only then handed to the system installer. No browser is involved. The cached APK is deleted automatically once the new version is running, and a leftover that is never installed is dropped after a week. If a download finished but the install did not happen (the install permission was not granted yet, or the dialog was dismissed), the verified package stays in the cache and the button turns into **Install**, so the same bytes are never fetched twice.
 
 ### Keeper info
 
@@ -159,6 +159,7 @@ The release build is written as `app/build/outputs/apk/release/petprofile.apk`, 
 - `CAMERA` — scanning transfer QR codes.
 - `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` — map picker and GPS.
 - `INTERNET` — map tiles, LAN transfer, check for updates, and OneDrive backup.
+- `REQUEST_INSTALL_PACKAGES` — handing a downloaded, verified update to the system installer.
 - `POST_NOTIFICATIONS` — routine reminders.
 - `RECEIVE_BOOT_COMPLETED` — re-schedule reminders after a reboot.
 

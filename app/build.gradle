@@ -25,8 +25,8 @@ android {
         applicationId "io.github.jaffe2718.petprofile"
         minSdk 26
         targetSdk 37
-        versionCode 10
-        versionName "0.3.2"
+        versionCode 11
+        versionName "0.3.3"
         def msalClientId = "89b7a0bb-d68f-408b-a0ec-3064170dbd33"
         buildConfigField "String", "MSAL_CLIENT_ID", "\"${msalClientId}\""
         manifestPlaceholders = [msalScheme: "msal${msalClientId}"]

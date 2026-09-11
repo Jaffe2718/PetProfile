@@ -87,7 +87,7 @@ PetProfile 是一款本地优先的 Android 应用，用于管理爬宠档案、
 - 退出登录（**饲养者信息**页的「退出登录」）会先弹确认框：退出只清除本机保存的令牌，云端已有备份不受影响。
 - 旧版本（≤ 0.3.0）上传的单个 `pet-profile-backup.zip` 仍可被识别并恢复；一旦下一次上传成功，该旧文件会被自动清除。
 - 上传/下载进行中时，按钮会全局保持禁用（离开页面也不会失效），再点会提示「正在同步，请稍后」；通知栏会显示 `x/y` 的文件进度（需通知权限），同步结束、或同步中被杀后再次启动 App 时都会自动清除该通知。
-- 「检查更新」按钮会查询 GitHub 最新 release（`v{x}.{y}.{z}`），若高于当前版本，则提供从 `https://github.com/Jaffe2718/PetProfile/releases/download/v{x}.{y}.{z}/petprofile.apk` 下载。
+- 「检查更新」按钮会查询 GitHub 最新 release，若有新版本则**在 App 内下载**：中断过的传输会从半截文件续传，下载完成后按 release 公布的 SHA-256 校验（即资源 digest；没有 digest 时退化为校验文件大小），通过后才交给系统安装器安装——全程不打开浏览器。新版本启动后会自动删除缓存里的安装包；若始终没有安装，残留文件在一周后清理。如果下载完成却没装成（例如当时还没授予「安装未知应用」权限、或对话框被关掉），校验通过的安装包会留在缓存里，按钮直接变成「安装」，不会重复下载同一份文件。
 
 ### 饲养者信息
 
@@ -157,6 +157,7 @@ release 产物输出为 `app/build/outputs/apk/release/petprofile.apk`，与 App
 - `CAMERA` —— 扫描转交二维码。
 - `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` —— 地图选点与 GPS。
 - `INTERNET` —— 地图瓦片、局域网转交、检查更新，以及 OneDrive 备份。
+- `REQUEST_INSTALL_PACKAGES` —— 把下载并校验通过的新版本交给系统安装器安装。
 - `POST_NOTIFICATIONS` —— 日常提醒。
 - `RECEIVE_BOOT_COMPLETED` —— 系统重启后重新调度提醒。
 

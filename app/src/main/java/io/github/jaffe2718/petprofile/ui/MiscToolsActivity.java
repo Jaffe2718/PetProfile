@@ -15,10 +15,13 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.os.LocaleListCompat;
@@ -28,7 +31,6 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 
 import io.github.jaffe2718.petprofile.R;
 import io.github.jaffe2718.petprofile.data.ExportBundle;
-import io.github.jaffe2718.petprofile.BuildConfig;
 import io.github.jaffe2718.petprofile.mcp.McpServer;
 import io.github.jaffe2718.petprofile.mcp.McpService;
 import io.github.jaffe2718.petprofile.mcp.McpTokenManager;
@@ -38,20 +40,16 @@ import io.github.jaffe2718.petprofile.util.BackupManager;
 import io.github.jaffe2718.petprofile.util.OneDriveBackupManager;
 import io.github.jaffe2718.petprofile.util.RoutineNotifier;
 import io.github.jaffe2718.petprofile.util.RoutineScheduler;
+import io.github.jaffe2718.petprofile.util.UpdateManager;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import java.io.File;
 
 public class MiscToolsActivity extends AppCompatActivity {
     private static final int REQUEST_EXPORT = 5501;
     private static final int REQUEST_IMPORT = 5502;
     private ExportBundle pendingExportBundle;
     private Dialog mcpDialog;
+    private UpdateManager.Download updateDownload;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -230,71 +228,124 @@ public class MiscToolsActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Checks the latest GitHub release, then downloads, verifies and installs it inside the app.
+     * Nothing here opens a browser any more.
+     */
     private void checkUpdate() {
-        Async.run(() -> {
-            try {
-                HttpURLConnection c = (HttpURLConnection) new URL(
-                        "https://api.github.com/repos/Jaffe2718/PetProfile/releases/latest").openConnection();
-                c.setRequestMethod("GET");
-                c.setConnectTimeout(15000);
-                c.setReadTimeout(15000);
-                c.setRequestProperty("Accept", "application/vnd.github+json");
-                int code = c.getResponseCode();
-                if (code != 200) {
-                    Async.ui(() -> toast(getString(R.string.update_error)));
+        Toast.makeText(this, R.string.update_checking, Toast.LENGTH_SHORT).show();
+        UpdateManager.fetchLatest(this, new Async.Result<UpdateManager.Release>() {
+            @Override
+            public void onSuccess(UpdateManager.Release release) {
+                if (release == null) {
+                    toast(getString(R.string.update_latest));
                     return;
                 }
-                StringBuilder sb = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(c.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        sb.append(line);
-                    }
-                }
-                String tag = JsonParser.parseString(sb.toString()).getAsJsonObject().get("tag_name").getAsString();
-                String remote = tag.startsWith("v") ? tag.substring(1) : tag;
-                int[] remoteV = parseVersion(remote);
-                int[] currentV = parseVersion(BuildConfig.VERSION_NAME);
-                if (remoteV != null && currentV != null && compareVersion(remoteV, currentV) > 0) {
-                    Async.ui(() -> showUpdateDialog(tag, remote));
-                } else {
-                    Async.ui(() -> toast(getString(R.string.update_latest)));
-                }
-            } catch (Throwable t) {
-                Async.ui(() -> toast(getString(R.string.update_error)));
+                showUpdateDialog(release);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                toast(getString(R.string.update_error));
             }
         });
     }
 
-    private void showUpdateDialog(String tag, String version) {
+    private void showUpdateDialog(UpdateManager.Release release) {
+        StringBuilder message = new StringBuilder(getString(R.string.update_available_msg, release.tag));
+        if (release.size > 0) {
+            message.append('\n').append(getString(R.string.update_download_size,
+                    UpdateManager.formatBytes(release.size)));
+        }
+        // A verified package may already be sitting in the cache, for instance when the download
+        // finished but the install did not happen; then this is an install, not a download.
+        boolean cached = release.cachedApk != null;
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.update_available)
-                .setMessage(getString(R.string.update_available_msg, tag))
-                .setPositiveButton(R.string.update_download, (d, w) -> openUrl(
-                        "https://github.com/Jaffe2718/PetProfile/releases/download/" + tag + "/petprofile.apk"))
+                .setMessage(message)
+                .setPositiveButton(cached ? R.string.update_install : R.string.update_download,
+                        (d, w) -> {
+                            if (cached) {
+                                installUpdate(release.cachedApk);
+                            } else {
+                                startUpdateDownload(release);
+                            }
+                        })
                 .setNegativeButton(R.string.action_cancel, null)
                 .show();
     }
 
-    private static int[] parseVersion(String version) {
-        try {
-            String[] parts = version.split("\\.");
-            if (parts.length < 3) {
-                return null;
-            }
-            return new int[]{Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2])};
-        } catch (Exception e) {
-            return null;
+    private void installUpdate(File apk) {
+        if (!UpdateManager.install(this, apk)) {
+            toast(getString(R.string.update_install_permission));
         }
     }
 
-    private static int compareVersion(int[] a, int[] b) {
-        for (int i = 0; i < 3; i++) {
-            if (a[i] != b[i]) {
-                return a[i] < b[i] ? -1 : 1;
+    private void startUpdateDownload(UpdateManager.Release release) {
+        int padding = dp(24);
+        TextView status = new TextView(this);
+        status.setPadding(0, dp(8), 0, dp(10));
+        ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(1000);
+        bar.setProgress(0);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(padding, dp(4), padding, 0);
+        box.addView(status);
+        box.addView(bar);
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.update_downloading)
+                .setView(box)
+                .setCancelable(false)
+                .setNegativeButton(R.string.action_cancel, (d, w) -> {
+                    if (updateDownload != null) {
+                        updateDownload.cancel();
+                    }
+                })
+                .create();
+        dialog.show();
+
+        updateDownload = UpdateManager.download(this, release, new UpdateManager.DownloadCallback() {
+            @Override
+            public void onProgress(long downloaded, long total, boolean resumed) {
+                Async.ui(() -> {
+                    int percent = total > 0 ? (int) Math.min(100, downloaded * 100 / total) : 0;
+                    bar.setProgress(total > 0 ? (int) (downloaded * 1000 / total) : 0);
+                    status.setText(getString(R.string.update_download_progress, percent,
+                            UpdateManager.formatBytes(downloaded), UpdateManager.formatBytes(total)));
+                });
             }
-        }
-        return 0;
+
+            @Override
+            public void onVerifying() {
+                Async.ui(() -> status.setText(R.string.update_verifying));
+            }
+
+            @Override
+            public void onReady(File apk) {
+                Async.ui(() -> {
+                    dialog.dismiss();
+                    installUpdate(apk);
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                Async.ui(() -> {
+                    dialog.dismiss();
+                    if (message == null || message.isEmpty()) {
+                        toast(getString(R.string.update_download_cancelled));
+                    } else {
+                        toast(getString(R.string.update_download_failed, message));
+                    }
+                });
+            }
+        });
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void toast(String message) {
