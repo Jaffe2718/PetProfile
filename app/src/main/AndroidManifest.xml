@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- The in-app updater hands the verified APK to the system installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
@@ -77,6 +78,10 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Local LAN Model Context Protocol server exposed to AI agents." />
         </service>
+        <service
+            android:name=".util.UpdateService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         <activity
             android:name=".ui.MapPickerActivity"
             android:exported="false" />

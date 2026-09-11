@@ -217,6 +217,10 @@
     <string name="update_install">安裝</string>
     <string name="update_download_size">安裝包大小：%1$s</string>
     <string name="update_downloading">正在下載更新</string>
+    <string name="update_notification_channel">應用更新</string>
+    <string name="update_notification_ready">安裝包已下載並校驗通過，點擊安裝</string>
+    <string name="update_background">後台更新</string>
+    <string name="update_background_toast">已在後台繼續更新，可在通知欄查看進度</string>
     <string name="update_download_progress">%1$d%%（%2$s / %3$s）</string>
     <string name="update_verifying">正在校驗安裝包…</string>
     <string name="update_download_failed">下載失敗：%1$s</string>

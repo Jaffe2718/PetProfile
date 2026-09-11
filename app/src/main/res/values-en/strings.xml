@@ -217,6 +217,10 @@
     <string name="update_install">Install</string>
     <string name="update_download_size">Package size: %1$s</string>
     <string name="update_downloading">Downloading update</string>
+    <string name="update_notification_channel">App updates</string>
+    <string name="update_notification_ready">The package is downloaded and verified, tap to install</string>
+    <string name="update_background">Update in background</string>
+    <string name="update_background_toast">Still updating in the background, see the notification for progress</string>
     <string name="update_download_progress">%1$d%% (%2$s / %3$s)</string>
     <string name="update_verifying">Verifying the package…</string>
     <string name="update_download_failed">Download failed: %1$s</string>

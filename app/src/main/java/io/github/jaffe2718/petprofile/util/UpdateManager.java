@@ -121,6 +121,7 @@ public final class UpdateManager {
                     Async.post(callback, release, null);
                 }
             } catch (Throwable t) {
+                Log.w(TAG, "release lookup failed", t);
                 Async.post(callback, null, t);
             }
         });
@@ -380,6 +381,19 @@ public final class UpdateManager {
         //noinspection ResultOfMethodCallIgnored
         apk.delete();
         return null;
+    }
+
+    /**
+     * The cached update package that is still waiting to be installed, if there is one. Used when
+     * the user comes back through the "download finished" notification.
+     */
+    public static File pendingInstallApk(Context context) {
+        File apk = new File(updateDir(context), APK_ASSET);
+        if (!apk.isFile()) {
+            return null;
+        }
+        Long version = versionCodeOf(context, apk);
+        return version != null && version > installedVersionCode(context) ? apk : null;
     }
 
     // ----- helpers -----

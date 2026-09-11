@@ -1,12 +1,16 @@
 package io.github.jaffe2718.petprofile.ui;
 
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.content.res.ColorStateList;
 import android.view.View;
@@ -41,6 +45,7 @@ import io.github.jaffe2718.petprofile.util.OneDriveBackupManager;
 import io.github.jaffe2718.petprofile.util.RoutineNotifier;
 import io.github.jaffe2718.petprofile.util.RoutineScheduler;
 import io.github.jaffe2718.petprofile.util.UpdateManager;
+import io.github.jaffe2718.petprofile.util.UpdateService;
 
 import java.io.File;
 
@@ -49,7 +54,55 @@ public class MiscToolsActivity extends AppCompatActivity {
     private static final int REQUEST_IMPORT = 5502;
     private ExportBundle pendingExportBundle;
     private Dialog mcpDialog;
-    private UpdateManager.Download updateDownload;
+    private AlertDialog updateDialog;
+    private ProgressBar updateBar;
+    private TextView updateStatus;
+    private boolean resumed;
+    private boolean installFromNotification;
+
+    /** Progress of the update transfer, which runs in {@link UpdateService}. */
+    private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (UpdateService.ACTION_PROGRESS.equals(action)) {
+                if (updateStatus == null) {
+                    return;
+                }
+                if (intent.getBooleanExtra(UpdateService.EXTRA_VERIFYING, false)) {
+                    updateStatus.setText(R.string.update_verifying);
+                    return;
+                }
+                long downloaded = intent.getLongExtra(UpdateService.EXTRA_DOWNLOADED, 0);
+                long total = intent.getLongExtra(UpdateService.EXTRA_TOTAL, -1);
+                int percent = total > 0 ? (int) Math.min(100, downloaded * 100 / total) : 0;
+                if (updateBar != null) {
+                    updateBar.setProgress(total > 0 ? (int) (downloaded * 1000 / total) : 0);
+                }
+                updateStatus.setText(getString(R.string.update_download_progress, percent,
+                        UpdateManager.formatBytes(downloaded), UpdateManager.formatBytes(total)));
+                return;
+            }
+            if (UpdateService.ACTION_READY.equals(action)) {
+                String path = intent.getStringExtra(UpdateService.EXTRA_APK);
+                dismissUpdateDialog();
+                if (resumed && path != null) {
+                    UpdateService.clearReadyNotification(MiscToolsActivity.this);
+                    installUpdate(new File(path));
+                }
+                return;
+            }
+            if (UpdateService.ACTION_FAILED.equals(action)) {
+                dismissUpdateDialog();
+                String message = intent.getStringExtra(UpdateService.EXTRA_MESSAGE);
+                if (message == null || message.isEmpty()) {
+                    toast(getString(R.string.update_download_cancelled));
+                } else {
+                    toast(getString(R.string.update_download_failed, message));
+                }
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,13 +122,64 @@ public class MiscToolsActivity extends AppCompatActivity {
         findViewById(R.id.languageButton).setOnClickListener(v -> chooseLanguage());
         findViewById(R.id.aboutButton).setOnClickListener(v -> showAbout());
         findViewById(R.id.updateButton).setOnClickListener(v -> checkUpdate());
+        installFromNotification = getIntent() != null
+                && getIntent().getBooleanExtra(UpdateService.EXTRA_INSTALL, false);
+        if (installFromNotification && getIntent() != null) {
+            getIntent().removeExtra(UpdateService.EXTRA_INSTALL);
+        }
         updateCloudButtons();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(UpdateService.ACTION_PROGRESS);
+        filter.addAction(UpdateService.ACTION_READY);
+        filter.addAction(UpdateService.ACTION_FAILED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(updateReceiver, filter);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        unregisterReceiver(updateReceiver);
+        super.onStop();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        resumed = true;
         updateCloudButtons();
+        // The transfer may have ended while this screen was stopped, in which case its broadcast was
+        // never delivered: drop the dialog rather than leave a frozen one behind.
+        if (updateDialog != null && !UpdateService.isDownloading()) {
+            dismissUpdateDialog();
+        }
+        if (installFromNotification) {
+            installFromNotification = false;
+            File apk = UpdateManager.pendingInstallApk(this);
+            if (apk != null) {
+                UpdateService.clearReadyNotification(this);
+                installUpdate(apk);
+            }
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        resumed = false;
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        dismissUpdateDialog();
+        super.onDestroy();
     }
 
     private void updateCloudButtons() {
@@ -233,6 +337,14 @@ public class MiscToolsActivity extends AppCompatActivity {
      * Nothing here opens a browser any more.
      */
     private void checkUpdate() {
+        // A transfer may already be running in the background service. Then this shows its dialog
+        // right away rather than asking the network again, which also keeps a second transfer from
+        // ever being started.
+        if (UpdateService.isDownloading()) {
+            showUpdateProgressDialog();
+            seedProgressFromService();
+            return;
+        }
         Toast.makeText(this, R.string.update_checking, Toast.LENGTH_SHORT).show();
         UpdateManager.fetchLatest(this, new Async.Result<UpdateManager.Release>() {
             @Override
@@ -281,67 +393,71 @@ public class MiscToolsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Shows the progress dialog and asks the update service to transfer the package. The dialog is
+     * only a view on the transfer: it is fed by the service's broadcasts, so leaving the app lets
+     * the download carry on behind the notification.
+     */
     private void startUpdateDownload(UpdateManager.Release release) {
+        showUpdateProgressDialog();
+        if (UpdateService.isDownloading()) {
+            seedProgressFromService();
+            return;
+        }
+        UpdateService.start(this, release);
+    }
+
+    private void showUpdateProgressDialog() {
+        if (updateDialog != null) {
+            return;
+        }
         int padding = dp(24);
-        TextView status = new TextView(this);
-        status.setPadding(0, dp(8), 0, dp(10));
-        ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        bar.setMax(1000);
-        bar.setProgress(0);
+        updateStatus = new TextView(this);
+        updateStatus.setPadding(0, dp(8), 0, dp(10));
+        updateStatus.setText(R.string.update_downloading);
+        updateBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        updateBar.setMax(1000);
+        updateBar.setProgress(0);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(padding, dp(4), padding, 0);
-        box.addView(status);
-        box.addView(bar);
+        box.addView(updateStatus);
+        box.addView(updateBar);
 
-        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+        updateDialog = new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.update_downloading)
                 .setView(box)
                 .setCancelable(false)
-                .setNegativeButton(R.string.action_cancel, (d, w) -> {
-                    if (updateDownload != null) {
-                        updateDownload.cancel();
-                    }
+                .setPositiveButton(R.string.update_background, (d, w) -> {
+                    dismissUpdateDialog();
+                    toast(getString(R.string.update_background_toast));
                 })
+                .setNegativeButton(R.string.action_cancel, (d, w) -> UpdateService.cancel(this))
                 .create();
-        dialog.show();
+        updateDialog.show();
+    }
 
-        updateDownload = UpdateManager.download(this, release, new UpdateManager.DownloadCallback() {
-            @Override
-            public void onProgress(long downloaded, long total, boolean resumed) {
-                Async.ui(() -> {
-                    int percent = total > 0 ? (int) Math.min(100, downloaded * 100 / total) : 0;
-                    bar.setProgress(total > 0 ? (int) (downloaded * 1000 / total) : 0);
-                    status.setText(getString(R.string.update_download_progress, percent,
-                            UpdateManager.formatBytes(downloaded), UpdateManager.formatBytes(total)));
-                });
-            }
+    /** Paints where the transfer that is already running has got to. */
+    private void seedProgressFromService() {
+        if (updateBar == null || updateStatus == null) {
+            return;
+        }
+        long[] progress = UpdateService.lastProgress();
+        long downloaded = progress[0];
+        long total = progress[1];
+        int percent = total > 0 ? (int) Math.min(100, downloaded * 100 / total) : 0;
+        updateBar.setProgress(total > 0 ? (int) (downloaded * 1000 / total) : 0);
+        updateStatus.setText(getString(R.string.update_download_progress, percent,
+                UpdateManager.formatBytes(downloaded), UpdateManager.formatBytes(total)));
+    }
 
-            @Override
-            public void onVerifying() {
-                Async.ui(() -> status.setText(R.string.update_verifying));
-            }
-
-            @Override
-            public void onReady(File apk) {
-                Async.ui(() -> {
-                    dialog.dismiss();
-                    installUpdate(apk);
-                });
-            }
-
-            @Override
-            public void onError(String message) {
-                Async.ui(() -> {
-                    dialog.dismiss();
-                    if (message == null || message.isEmpty()) {
-                        toast(getString(R.string.update_download_cancelled));
-                    } else {
-                        toast(getString(R.string.update_download_failed, message));
-                    }
-                });
-            }
-        });
+    private void dismissUpdateDialog() {
+        if (updateDialog != null) {
+            updateDialog.dismiss();
+            updateDialog = null;
+            updateBar = null;
+            updateStatus = null;
+        }
     }
 
     private int dp(int value) {
